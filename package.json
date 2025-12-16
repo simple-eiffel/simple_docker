@@ -1,0 +1,38 @@
+{
+  "name": "simple_docker",
+  "version": "1.0.0",
+  "description": "Docker container management library for Eiffel: build, run, manage containers programmatically",
+  "author": "Larry Rix",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/simple-eiffel/simple_docker.git"
+  },
+  "keywords": [
+    "eiffel",
+    "docker",
+    "containers",
+    "devops",
+    "infrastructure"
+  ],
+  "eiffel": {
+    "ecf": "simple_docker.ecf",
+    "library_target": "simple_docker",
+    "test_target": "simple_docker_tests",
+    "uuid": "1D96F7AB-F8FC-4453-81BE-EC384258E857"
+  },
+  "dependencies": {
+    "simple_ipc": ">=2.0.0",
+    "simple_json": "*",
+    "simple_file": "*",
+    "simple_logger": "*"
+  },
+  "environment": {
+    "SIMPLE_DOCKER": "D:\\prod\\simple_docker"
+  },
+  "scripts": {
+    "compile": "/d/prod/ec.sh -batch -config simple_docker.ecf -target simple_docker_tests -c_compile",
+    "test": "./EIFGENs/simple_docker_tests/W_code/simple_docker.exe",
+    "finalize": "/d/prod/ec.sh -batch -config simple_docker.ecf -target simple_docker_tests -finalize -keep -c_compile"
+  }
+}

@@ -1,0 +1,13 @@
+# EiffelStudio
+EIFGENs/
+*.epr
+
+# IDE
+.idea/
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+exception_trace.log

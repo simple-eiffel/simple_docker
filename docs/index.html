@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>simple_docker - Docker Container Management for Eiffel</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --secondary: #1e40af;
+            --bg: #f8fafc;
+            --text: #1e293b;
+            --code-bg: #f1f5f9;
+            --border: #e2e8f0;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: var(--text);
+            background: var(--bg);
+        }
+        header {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 3rem 2rem;
+            text-align: center;
+        }
+        header h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
+        header p { opacity: 0.9; font-size: 1.2rem; }
+        nav {
+            background: white;
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        nav ul { list-style: none; display: flex; gap: 2rem; justify-content: center; }
+        nav a { color: var(--primary); text-decoration: none; font-weight: 500; }
+        nav a:hover { text-decoration: underline; }
+        main { max-width: 900px; margin: 2rem auto; padding: 0 2rem; }
+        section { background: white; border-radius: 8px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        h2 { color: var(--primary); margin-bottom: 1rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+        h3 { color: var(--secondary); margin: 1.5rem 0 0.75rem; }
+        pre {
+            background: var(--code-bg);
+            padding: 1rem;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 0.9rem;
+            margin: 1rem 0;
+        }
+        code { font-family: 'Fira Code', 'Consolas', monospace; }
+        .inline-code {
+            background: var(--code-bg);
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            font-size: 0.9rem;
+        }
+        table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+        th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
+        th { background: var(--code-bg); font-weight: 600; }
+        .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; }
+        .feature-card {
+            background: var(--code-bg);
+            padding: 1.5rem;
+            border-radius: 6px;
+        }
+        .feature-card h4 { color: var(--primary); margin-bottom: 0.5rem; }
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: #64748b;
+            border-top: 1px solid var(--border);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>simple_docker</h1>
+        <p>Docker Container Management for Eiffel</p>
+    </header>
+
+    <nav>
+        <ul>
+            <li><a href="#overview">Overview</a></li>
+            <li><a href="#installation">Installation</a></li>
+            <li><a href="#quickstart">Quick Start</a></li>
+            <li><a href="#api">API Reference</a></li>
+            <li><a href="#examples">Examples</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <section id="overview">
+            <h2>Overview</h2>
+            <p>simple_docker is an Eiffel library for programmatic Docker container management. It provides a clean, type-safe API for building, running, and managing Docker containers.</p>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h4>Container Lifecycle</h4>
+                    <p>Create, start, stop, pause, restart, and remove containers with full state tracking.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Image Management</h4>
+                    <p>List, pull, inspect, and remove Docker images from local and remote registries.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Fluent Builder API</h4>
+                    <p>Configure containers using intuitive chained method calls.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Design by Contract</h4>
+                    <p>Full DBC support with preconditions, postconditions, and invariants.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="installation">
+            <h2>Installation</h2>
+            <h3>Requirements</h3>
+            <ul>
+                <li>EiffelStudio 25.02 or later</li>
+                <li>Docker Desktop running on Windows</li>
+                <li>Dependencies: simple_ipc, simple_json, simple_file, simple_logger</li>
+            </ul>
+
+            <h3>Setup</h3>
+            <pre><code># Clone the repository
+git clone https://github.com/simple-eiffel/simple_docker.git
+
+# Set environment variable
+export SIMPLE_DOCKER=/path/to/simple_docker</code></pre>
+
+            <h3>ECF Configuration</h3>
+            <pre><code>&lt;library name="simple_docker" location="$SIMPLE_DOCKER\simple_docker.ecf"/&gt;</code></pre>
+        </section>
+
+        <section id="quickstart">
+            <h2>Quick Start</h2>
+            <pre><code>local
+    client: DOCKER_CLIENT
+    spec: CONTAINER_SPEC
+    container: detachable DOCKER_CONTAINER
+do
+    -- Create client (connects via named pipe)
+    create client.make
+
+    -- Check Docker is running
+    if client.ping then
+        print ("Docker daemon is responsive%N")
+    end
+
+    -- Create container specification
+    create spec.make ("alpine:latest")
+    spec.set_name ("my-container")
+        .set_cmd (&lt;&lt;"echo", "Hello!"&gt;&gt;)
+        .add_env ("FOO", "bar").do_nothing
+
+    -- Create and start container
+    container := client.run_container (spec)
+
+    if attached container as c then
+        print ("Created: " + c.short_id + "%N")
+
+        -- Wait for completion
+        client.wait_container (c.id).do_nothing
+
+        -- Get logs
+        if attached client.container_logs (c.id, True, True, 100) as logs then
+            print (logs)
+        end
+
+        -- Cleanup
+        client.remove_container (c.id, True).do_nothing
+    end
+end</code></pre>
+        </section>
+
+        <section id="api">
+            <h2>API Reference</h2>
+
+            <h3>DOCKER_CLIENT</h3>
+            <p>Main facade for all Docker operations.</p>
+            <table>
+                <tr><th>Feature</th><th>Description</th></tr>
+                <tr><td><code>ping</code></td><td>Check if Docker daemon is responsive</td></tr>
+                <tr><td><code>version</code></td><td>Get Docker version information</td></tr>
+                <tr><td><code>info</code></td><td>Get Docker system information</td></tr>
+                <tr><td><code>list_containers (all)</code></td><td>List containers (optionally all)</td></tr>
+                <tr><td><code>create_container (spec)</code></td><td>Create container from spec</td></tr>
+                <tr><td><code>start_container (id)</code></td><td>Start a container</td></tr>
+                <tr><td><code>stop_container (id, timeout)</code></td><td>Stop with timeout</td></tr>
+                <tr><td><code>remove_container (id, force)</code></td><td>Remove container</td></tr>
+                <tr><td><code>list_images</code></td><td>List all images</td></tr>
+                <tr><td><code>pull_image (name)</code></td><td>Pull image from registry</td></tr>
+            </table>
+
+            <h3>CONTAINER_SPEC</h3>
+            <p>Fluent builder for container configuration.</p>
+            <table>
+                <tr><th>Feature</th><th>Description</th></tr>
+                <tr><td><code>set_name (name)</code></td><td>Set container name</td></tr>
+                <tr><td><code>add_port (container, host)</code></td><td>Map TCP port</td></tr>
+                <tr><td><code>add_env (key, value)</code></td><td>Add environment variable</td></tr>
+                <tr><td><code>add_volume (host, container)</code></td><td>Mount volume</td></tr>
+                <tr><td><code>set_memory_limit (bytes)</code></td><td>Set memory limit</td></tr>
+                <tr><td><code>set_restart_policy (policy)</code></td><td>Set restart policy</td></tr>
+                <tr><td><code>to_json</code></td><td>Export as JSON for Docker API</td></tr>
+            </table>
+
+            <h3>DOCKER_CONTAINER</h3>
+            <p>Container representation with state queries.</p>
+            <table>
+                <tr><th>Feature</th><th>Description</th></tr>
+                <tr><td><code>id / short_id</code></td><td>Container ID</td></tr>
+                <tr><td><code>name</code></td><td>Container name</td></tr>
+                <tr><td><code>is_running</code></td><td>Check if running</td></tr>
+                <tr><td><code>is_exited</code></td><td>Check if exited</td></tr>
+                <tr><td><code>can_start</code></td><td>Can container be started?</td></tr>
+                <tr><td><code>exit_code</code></td><td>Exit code (if exited)</td></tr>
+            </table>
+
+            <h3>DOCKER_IMAGE</h3>
+            <p>Image representation with metadata.</p>
+            <table>
+                <tr><th>Feature</th><th>Description</th></tr>
+                <tr><td><code>id / short_id</code></td><td>Image ID</td></tr>
+                <tr><td><code>repo_tags</code></td><td>List of tags</td></tr>
+                <tr><td><code>size / size_mb</code></td><td>Image size</td></tr>
+                <tr><td><code>has_tag (tag)</code></td><td>Check for tag</td></tr>
+                <tr><td><code>matches (ref)</code></td><td>Match by name or ID</td></tr>
+            </table>
+        </section>
+
+        <section id="examples">
+            <h2>Examples</h2>
+
+            <h3>Web Server Container</h3>
+            <pre><code>create spec.make ("nginx:alpine")
+spec.set_name ("web-server")
+    .add_port (80, 8080)
+    .add_volume ("/var/www", "/usr/share/nginx/html")
+    .set_restart_policy ("unless-stopped").do_nothing
+
+container := client.run_container (spec)</code></pre>
+
+            <h3>Error Handling</h3>
+            <pre><code>container := client.create_container (spec)
+
+if client.has_error then
+    if attached client.last_error as err then
+        if err.is_not_found then
+            -- Image not found, pull it
+            client.pull_image (spec.image).do_nothing
+        elseif err.is_conflict then
+            -- Container name exists
+        elseif err.is_retryable then
+            -- Network error, can retry
+        end
+    end
+end</code></pre>
+
+            <h3>Listing and Filtering</h3>
+            <pre><code>-- List running containers
+across client.list_containers (False) as c loop
+    if c.is_running then
+        print (c.name + " is running%N")
+    end
+end
+
+-- Find image by tag
+across client.list_images as img loop
+    if img.has_tag ("alpine") then
+        print ("Found alpine: " + img.short_id + "%N")
+    end
+end</code></pre>
+        </section>
+    </main>
+
+    <footer>
+        <p>simple_docker &copy; 2025 Larry Rix | MIT License</p>
+        <p><a href="https://github.com/simple-eiffel/simple_docker">GitHub</a> | <a href="https://simple-eiffel.github.io">Simple Eiffel</a></p>
+    </footer>
+</body>
+</html>
