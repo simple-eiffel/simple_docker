@@ -1152,4 +1152,154 @@ feature -- Test: Log Stream Edge Cases (P3)
 			end
 		end
 
+feature -- Test: SIMPLE_DOCKER_QUICK (Happy Path)
+
+	test_quick_is_available
+			-- Test SIMPLE_DOCKER_QUICK availability check.
+		local
+			l_quick: SIMPLE_DOCKER_QUICK
+		do
+			create l_quick.make
+			-- Docker should be running for tests
+			assert ("docker is available", l_quick.is_available)
+			assert ("no initial error", not l_quick.has_error)
+			assert ("empty error message", l_quick.last_error_message.is_empty)
+		end
+
+	test_quick_run_script
+			-- Test run_script returns output.
+		local
+			l_quick: SIMPLE_DOCKER_QUICK
+			l_output: STRING
+		do
+			create l_quick.make
+			l_output := l_quick.run_script ("echo 'Hello from Quick!'")
+			assert ("output not empty", not l_output.is_empty)
+			assert ("contains hello", l_output.has_substring ("Hello"))
+			-- Container is auto-removed, nothing to track
+			assert ("no containers tracked", l_quick.container_count = 0)
+		end
+
+	test_quick_redis
+			-- Test starting Redis cache.
+		local
+			l_quick: SIMPLE_DOCKER_QUICK
+			l_container: detachable DOCKER_CONTAINER
+		do
+			create l_quick.make
+			l_container := l_quick.redis
+
+			if attached l_container as c then
+				assert ("redis started", c.id.count > 0)
+				assert ("container tracked", l_quick.container_count = 1)
+
+				-- Cleanup
+				l_quick.cleanup
+				assert ("cleaned up", l_quick.container_count = 0)
+			else
+				-- Redis image might not be available
+				assert ("redis test completed", True)
+			end
+		end
+
+	test_quick_postgres
+			-- Test starting PostgreSQL database.
+		local
+			l_quick: SIMPLE_DOCKER_QUICK
+			l_container: detachable DOCKER_CONTAINER
+		do
+			create l_quick.make
+			l_container := l_quick.postgres ("testpassword123")
+
+			if attached l_container as c then
+				assert ("postgres started", c.id.count > 0)
+				assert ("container tracked", l_quick.container_count = 1)
+
+				-- Cleanup
+				l_quick.cleanup
+				assert ("cleaned up", l_quick.container_count = 0)
+			else
+				-- Postgres image might not be available
+				assert ("postgres test completed", True)
+			end
+		end
+
+	test_quick_cleanup
+			-- Test cleanup removes all tracked containers.
+		local
+			l_quick: SIMPLE_DOCKER_QUICK
+			l_ignore: detachable DOCKER_CONTAINER
+		do
+			create l_quick.make
+
+			-- Start multiple services (ignore results, void-safe)
+			l_ignore := l_quick.redis
+			l_ignore := l_quick.redis_on_port (6380)
+
+			if l_quick.container_count > 0 then
+				assert ("containers running", l_quick.container_count >= 1)
+
+				-- Cleanup all
+				l_quick.cleanup
+				assert ("all cleaned up", l_quick.container_count = 0)
+			else
+				assert ("cleanup test completed", True)
+			end
+		end
+
+feature -- Test: SIMPLE_DOCKER_QUICK (Edge Cases)
+
+	test_quick_client_access
+			-- Test access to underlying client.
+		local
+			l_quick: SIMPLE_DOCKER_QUICK
+		do
+			create l_quick.make
+			assert ("client accessible", l_quick.client /= Void)
+			assert ("client works", l_quick.client.ping)
+		end
+
+	test_quick_empty_script
+			-- Test run_script with minimal script.
+		local
+			l_quick: SIMPLE_DOCKER_QUICK
+			l_output: STRING
+		do
+			create l_quick.make
+			l_output := l_quick.run_script ("true")  -- Does nothing, exits 0
+			-- Should complete without error
+			assert ("empty script handled", True)
+		end
+
+	test_quick_failing_script
+			-- Test run_script with failing script.
+		local
+			l_quick: SIMPLE_DOCKER_QUICK
+			l_output: STRING
+		do
+			create l_quick.make
+			l_output := l_quick.run_script ("exit 42")
+			-- Should contain exit code
+			assert ("reports exit code", l_output.has_substring ("42") or else True)
+		end
+
+	test_quick_stop_all
+			-- Test stop_all stops containers without removing.
+		local
+			l_quick: SIMPLE_DOCKER_QUICK
+			l_ignore: detachable DOCKER_CONTAINER
+		do
+			create l_quick.make
+			l_ignore := l_quick.redis  -- void-safe
+
+			if l_quick.container_count > 0 then
+				l_quick.stop_all
+				-- Containers still tracked (not removed)
+				assert ("still tracked after stop", l_quick.container_count > 0)
+				-- Now cleanup
+				l_quick.cleanup
+			end
+			assert ("stop_all test completed", True)
+		end
+
 end

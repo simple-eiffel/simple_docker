@@ -15,7 +15,7 @@
         <h1>simple_docker</h1>
         <p class="tagline">Docker Container Management for Eiffel</p>
         <div class="badges">
-            <span class="badge badge-version">v1.1.0</span>
+            <span class="badge badge-version">v1.4.0</span>
             <span class="badge badge-license">MIT</span>
         </div>
     </header>
@@ -58,7 +58,31 @@
                 </li>
             </ol>
 
-            <h3>Basic Usage</h3>
+            <h3>Beginner API (SIMPLE_DOCKER_QUICK)</h3>
+            <p>Don't know Docker? No problem! One-liner operations:</p>
+<pre><code><span class="keyword">local</span>
+    docker: <span class="type">SIMPLE_DOCKER_QUICK</span>
+<span class="keyword">do</span>
+    <span class="keyword">create</span> docker.make
+
+    <span class="comment">-- Run a web server on port 8080</span>
+    docker.web_server (<span class="string">"C:\my_website"</span>, 8080)
+
+    <span class="comment">-- Run PostgreSQL database</span>
+    docker.postgres (<span class="string">"mypassword"</span>)
+
+    <span class="comment">-- Run Redis cache</span>
+    docker.redis
+
+    <span class="comment">-- Run a shell script</span>
+    print (docker.run_script (<span class="string">"echo hello && date"</span>))
+
+    <span class="comment">-- Clean up when done</span>
+    docker.cleanup
+<span class="keyword">end</span></code></pre>
+
+            <h3>Full API (DOCKER_CLIENT)</h3>
+            <p>Need full control? Use the advanced API:</p>
 <pre><code><span class="keyword">local</span>
     client: <span class="type">DOCKER_CLIENT</span>
     spec: <span class="type">CONTAINER_SPEC</span>
@@ -83,6 +107,11 @@
             <h2>Key Features</h2>
 
             <div class="feature-grid">
+                <div class="feature-card">
+                    <h4>Zero-Config Beginner API</h4>
+                    <p>One-liner operations for web servers, databases, caches, and scripts. No Docker knowledge required!</p>
+                </div>
+
                 <div class="feature-card">
                     <h4>Container Lifecycle</h4>
                     <p>Create, start, stop, pause, restart, kill, and remove containers with full state tracking.</p>

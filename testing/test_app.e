@@ -23,7 +23,7 @@ feature -- Initialization
 			l_tests: LIB_TESTS
 			l_passed, l_failed, l_total: INTEGER
 		do
-			print ("Testing SIMPLE_DOCKER v1.0.0...%N")
+			print ("Testing SIMPLE_DOCKER v1.4.0...%N")
 			print ("Requires Docker Desktop running%N%N")
 
 			create l_tests
@@ -116,7 +116,21 @@ feature -- Initialization
 			l_passed := l_passed + run_test (l_tests, "test_stream_logs_stopped_container", agent l_tests.test_stream_logs_stopped_container)
 			l_passed := l_passed + run_test (l_tests, "test_stream_logs_timeout_behavior", agent l_tests.test_stream_logs_timeout_behavior)
 
-			l_total := 49  -- 39 + 10 log stream tests
+			-- SIMPLE_DOCKER_QUICK tests (Beginner API)
+			print ("%N=== SIMPLE_DOCKER_QUICK Tests (Happy Path) ===%N")
+			l_passed := l_passed + run_test (l_tests, "test_quick_is_available", agent l_tests.test_quick_is_available)
+			l_passed := l_passed + run_test (l_tests, "test_quick_run_script", agent l_tests.test_quick_run_script)
+			l_passed := l_passed + run_test (l_tests, "test_quick_redis", agent l_tests.test_quick_redis)
+			l_passed := l_passed + run_test (l_tests, "test_quick_postgres", agent l_tests.test_quick_postgres)
+			l_passed := l_passed + run_test (l_tests, "test_quick_cleanup", agent l_tests.test_quick_cleanup)
+
+			print ("%N=== SIMPLE_DOCKER_QUICK Tests (Edge Cases) ===%N")
+			l_passed := l_passed + run_test (l_tests, "test_quick_client_access", agent l_tests.test_quick_client_access)
+			l_passed := l_passed + run_test (l_tests, "test_quick_empty_script", agent l_tests.test_quick_empty_script)
+			l_passed := l_passed + run_test (l_tests, "test_quick_failing_script", agent l_tests.test_quick_failing_script)
+			l_passed := l_passed + run_test (l_tests, "test_quick_stop_all", agent l_tests.test_quick_stop_all)
+
+			l_total := 58  -- 49 + 9 SIMPLE_DOCKER_QUICK tests
 			l_failed := l_total - l_passed
 
 			print ("%N======================================%N")

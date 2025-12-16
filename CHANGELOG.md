@@ -5,6 +5,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2025-12-16
+
+### Added
+- **SIMPLE_DOCKER_QUICK - Zero-Config Beginner API**
+  - One-liner operations for common Docker tasks
+  - Web servers: `web_server`, `web_server_nginx`, `web_server_apache`
+  - Databases: `postgres`, `postgres_on_port`, `mysql`, `mysql_on_port`, `mariadb`, `mongodb`
+  - Caches: `redis`, `redis_on_port`, `memcached`
+  - Message queues: `rabbitmq`
+  - Script execution: `run_script`, `run_script_in_image`, `run_python`
+  - Container management: `stop_all`, `cleanup`, `container_count`
+  - Status: `is_available`, `has_error`, `last_error_message`
+  - Full access: `client` attribute for advanced operations
+  - Automatic image pulling when not present
+  - Docker multiplexed stream header stripping for clean output
+  - Full Design by Contract
+
+### Changed
+- Test count increased from 49 to 58 tests
+- README updated with two-API-level documentation
+- User guide updated with comprehensive SIMPLE_DOCKER_QUICK section
+- Index page updated with beginner-friendly examples
+
+## [1.3.0] - 2025-12-16
+
+### Added
+- **Phase 3 Features: Streaming Logs**
+  - `LOG_STREAM_OPTIONS` - Fluent builder for log stream configuration
+    - `set_stdout`, `set_stderr`, `set_timestamps`, `set_follow`
+    - `set_tail` for tail mode, `set_timeout_ms` for streaming timeout
+    - `is_valid` query (requires stdout or stderr enabled)
+    - `to_query_string` for HTTP query generation
+  - `stream_container_logs` - Callback-based log streaming
+    - Agent callback receives log chunks in real-time
+    - Callback returns Boolean to continue/stop streaming
+    - Proper handling of Docker multiplexed stream format
+    - 8-byte frame header parsing (type, size)
+  - Internal helpers: `build_streaming_request`, `process_log_stream_data`, `read_big_endian_32`
+
+### Changed
+- Test count increased from 39 to 49 tests (10 log stream tests)
+- Added "What is Docker?" beginner guide to documentation
+
 ## [1.2.0] - 2025-12-16
 
 ### Added

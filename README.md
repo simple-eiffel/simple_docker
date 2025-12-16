@@ -9,7 +9,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Eiffel](https://img.shields.io/badge/Eiffel-25.02-blue.svg)](https://www.eiffel.org/)
 [![Design by Contract](https://img.shields.io/badge/DbC-enforced-orange.svg)]()
-[![Tests](https://img.shields.io/badge/tests-38%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-58%20passing-brightgreen.svg)]()
 
 Docker container management library for Eiffel. Build, run, and manage containers programmatically.
 
@@ -17,11 +17,49 @@ Part of the [Simple Eiffel](https://github.com/simple-eiffel) ecosystem.
 
 ## Status
 
-**Production** - 38 tests passing (v1.1.0)
+**Production** - 58 tests passing (v1.4.0)
 
 ## Overview
 
-SIMPLE_DOCKER provides a clean, type-safe API for Docker container management through Windows named pipes. It communicates directly with the Docker Engine API, enabling full container lifecycle control from Eiffel applications.
+SIMPLE_DOCKER provides two API levels:
+
+- **SIMPLE_DOCKER_QUICK** - Zero-configuration facade for beginners (one-liners!)
+- **DOCKER_CLIENT** - Full-control API for advanced users
+
+Both communicate with the Docker Engine via Windows named pipes.
+
+### Beginner API (SIMPLE_DOCKER_QUICK)
+
+Don't know Docker? No problem! One-liner operations:
+
+```eiffel
+local
+    docker: SIMPLE_DOCKER_QUICK
+do
+    create docker.make
+
+    -- Run a web server serving files from a folder
+    docker.web_server ("C:\my_website", 8080)
+
+    -- Run a database
+    docker.postgres ("mypassword")
+
+    -- Run a cache
+    docker.redis
+
+    -- Run a shell script and get output
+    print (docker.run_script ("echo hello && date"))
+
+    -- Clean up when done
+    docker.cleanup
+end
+```
+
+That's it. No configuration, no specs, no ports to remember.
+
+### Full API (DOCKER_CLIENT)
+
+Need full control? Use the advanced API:
 
 ```eiffel
 local
@@ -45,6 +83,7 @@ end
 
 ## Features
 
+- **Zero-Config Beginner API** - One-liners for web servers, databases, caches, scripts
 - **Container Lifecycle** - Create, start, stop, pause, restart, kill, remove containers
 - **Image Management** - List, pull, inspect, and remove Docker images
 - **Network Management** - Create, list, connect, disconnect, and remove networks
@@ -199,6 +238,7 @@ end
 
 | Class | Description |
 |-------|-------------|
+| `SIMPLE_DOCKER_QUICK` | Zero-config beginner API - one-liners for common tasks |
 | `DOCKER_CLIENT` | Main facade for all Docker operations |
 | `DOCKER_CONTAINER` | Container representation with state and metadata |
 | `DOCKER_IMAGE` | Image representation with tags and size |
@@ -238,14 +278,15 @@ cd /d/prod/simple_docker
 ./EIFGENs/simple_docker_tests/F_code/simple_docker.exe
 ```
 
-**Test Results:** 38 tests passing
+**Test Results:** 58 tests passing
 
 ## Project Structure
 
 ```
 simple_docker/
 ├── src/                            # Eiffel source
-│   ├── docker_client.e             # Main facade (with retry logic)
+│   ├── simple_docker_quick.e       # Zero-config beginner API
+│   ├── docker_client.e             # Full-control facade (with retry logic)
 │   ├── docker_container.e          # Container representation
 │   ├── docker_image.e              # Image representation
 │   ├── docker_network.e            # Network representation
@@ -253,9 +294,10 @@ simple_docker/
 │   ├── docker_error.e              # Error handling
 │   ├── container_spec.e            # Fluent builder
 │   ├── container_state.e           # State constants
-│   └── dockerfile_builder.e        # Dockerfile generation
+│   ├── dockerfile_builder.e        # Dockerfile generation
+│   └── log_stream_options.e        # Log streaming configuration
 ├── testing/                        # Test suite
-│   ├── lib_tests.e                 # Test cases (38 tests)
+│   ├── lib_tests.e                 # Test cases (58 tests)
 │   └── test_app.e                  # Test runner
 ├── docs/                           # IUARC 5-doc standard
 │   ├── index.html                  # Overview
@@ -281,6 +323,8 @@ simple_docker/
 - [x] DOCKER_VOLUME - Volume operations (v1.1)
 - [x] Exec operations in containers (v1.1)
 - [x] Resilient IPC with retry logic (v1.1)
+- [x] Streaming logs with callback support (v1.3)
+- [x] SIMPLE_DOCKER_QUICK - Zero-config beginner API (v1.4)
 - [ ] COMPOSE_BUILDER - docker-compose.yaml generation
 - [ ] Unix socket support (via simple_ipc)
 

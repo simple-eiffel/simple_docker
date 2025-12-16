@@ -66,8 +66,96 @@ export SIMPLE_DOCKER=/d/prod/simple_docker</code></pre>
             </ul>
         </section>
 
+        <section id="quick-api">
+            <h2>Beginner API (SIMPLE_DOCKER_QUICK)</h2>
+
+            <p>
+                New to Docker? The <code>SIMPLE_DOCKER_QUICK</code> class provides one-liner operations
+                that handle all the complexity for you. No Docker knowledge required!
+            </p>
+
+            <h3>Getting Started</h3>
+<pre><code><span class="keyword">local</span>
+    docker: <span class="type">SIMPLE_DOCKER_QUICK</span>
+<span class="keyword">do</span>
+    <span class="keyword">create</span> docker.make
+
+    <span class="comment">-- That's it! You're ready to use Docker.</span>
+<span class="keyword">end</span></code></pre>
+
+            <h3>Web Servers</h3>
+<pre><code><span class="comment">-- Serve files from a folder on port 8080</span>
+docker.web_server (<span class="string">"C:\my_website"</span>, 8080)
+
+<span class="comment">-- Or explicitly choose Nginx or Apache</span>
+docker.web_server_nginx (<span class="string">"C:\my_website"</span>, 8080)
+docker.web_server_apache (<span class="string">"C:\my_website"</span>, 8081)</code></pre>
+
+            <h3>Databases</h3>
+<pre><code><span class="comment">-- PostgreSQL on default port 5432</span>
+docker.postgres (<span class="string">"mypassword"</span>)
+
+<span class="comment">-- PostgreSQL on custom port</span>
+docker.postgres_on_port (<span class="string">"mypassword"</span>, 5433)
+
+<span class="comment">-- MySQL on port 3306</span>
+docker.mysql (<span class="string">"mypassword"</span>)
+
+<span class="comment">-- MariaDB</span>
+docker.mariadb (<span class="string">"mypassword"</span>)
+
+<span class="comment">-- MongoDB (no auth)</span>
+docker.mongodb</code></pre>
+
+            <h3>Caches & Message Queues</h3>
+<pre><code><span class="comment">-- Redis on port 6379</span>
+docker.redis
+
+<span class="comment">-- Redis on custom port</span>
+docker.redis_on_port (6380)
+
+<span class="comment">-- Memcached</span>
+docker.memcached
+
+<span class="comment">-- RabbitMQ (ports 5672 and 15672 for management UI)</span>
+docker.rabbitmq</code></pre>
+
+            <h3>Running Scripts</h3>
+<pre><code><span class="comment">-- Run a shell script and get output</span>
+print (docker.run_script (<span class="string">"echo hello && date"</span>))
+
+<span class="comment">-- Run Python code</span>
+print (docker.run_python (<span class="string">"print(2+2)"</span>))</code></pre>
+
+            <h3>Cleanup</h3>
+<pre><code><span class="comment">-- Stop all containers started by this facade</span>
+docker.stop_all
+
+<span class="comment">-- Stop AND remove all containers</span>
+docker.cleanup</code></pre>
+
+            <h3>Checking Status</h3>
+<pre><code><span class="comment">-- Is Docker available?</span>
+<span class="keyword">if</span> docker.is_available <span class="keyword">then</span>
+    print (<span class="string">"Docker is running%N"</span>)
+<span class="keyword">end</span>
+
+<span class="comment">-- How many containers are we managing?</span>
+print (<span class="string">"Managing "</span> + docker.container_count.out + <span class="string">" containers%N"</span>)
+
+<span class="comment">-- Did the last operation fail?</span>
+<span class="keyword">if</span> docker.has_error <span class="keyword">then</span>
+    print (<span class="string">"Error: "</span> + docker.last_error_message + <span class="string">"%N"</span>)
+<span class="keyword">end</span></code></pre>
+
+            <h3>Advanced Access</h3>
+            <p>Need more control? Access the underlying DOCKER_CLIENT:</p>
+<pre><code><span class="comment">-- Get full control when needed</span>
+docker.client.list_containers (True).do_nothing</code></pre>
+        </section>
+
         <section id="connecting">
-            <h2>Connecting to Docker</h2>
+            <h2>Full API: Connecting to Docker</h2>
 
             <h3>Creating a Client</h3>
 <pre><code><span class="keyword">local</span>
