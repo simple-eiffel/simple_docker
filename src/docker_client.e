@@ -620,11 +620,11 @@ feature -- Image Operations
 
 			-- Get temp directory from environment
 			create l_env
-			l_temp_base := l_env.get ("TEMP")
-			if l_temp_base = Void then
-				l_temp_base := l_env.get ("TMP")
-			end
-			if l_temp_base = Void then
+			if attached l_env.item ("TEMP") as l_temp then
+				l_temp_base := l_temp.to_string_8
+			elseif attached l_env.item ("TMP") as l_tmp then
+				l_temp_base := l_tmp.to_string_8
+			else
 				l_temp_base := "/tmp"
 			end
 
