@@ -104,18 +104,18 @@ end
 git clone https://github.com/simple-eiffel/simple_docker.git
 ```
 
-2. Set environment variable:
+2. Set environment variable (one-time setup for all simple_* libraries):
 ```bash
 # Windows
-set SIMPLE_DOCKER=D:\path\to\simple_docker
+set SIMPLE_EIFFEL=D:\prod
 
 # MSYS2/Git Bash
-export SIMPLE_DOCKER=/d/prod/simple_docker
+export SIMPLE_EIFFEL=/d/prod
 ```
 
 3. Add to your ECF:
 ```xml
-<library name="simple_docker" location="$SIMPLE_DOCKER\simple_docker.ecf"/>
+<library name="simple_docker" location="$SIMPLE_EIFFEL/simple_docker/simple_docker.ecf"/>
 ```
 
 ## Dependencies
