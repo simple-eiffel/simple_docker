@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2025-12-16
+
+### Added
+- **Phase 3 Features: Build Support**
+  - `build_image (a_context_path, a_tag)` - Build image from directory with Dockerfile
+    - Creates tar archive using simple_archive
+    - Sends binary POST to /build endpoint
+  - `build_image_from_dockerfile (a_dockerfile, a_tag)` - Build from Dockerfile string
+    - Creates temp directory with Dockerfile content
+    - Useful for programmatic image generation
+  - `do_binary_request` - Internal helper for binary uploads (tar archives)
+  - `build_binary_request` - HTTP request builder for binary content
+  - Note: Build features are experimental; streaming build output requires additional work
+
+### Changed
+- Added simple_archive and uuid library dependencies
+- Test count increased from 38 to 39 tests
+- Added `test_build_dockerfile_builder_generates_valid_output` test
+
 ## [1.1.0] - 2025-12-15
 
 ### Added

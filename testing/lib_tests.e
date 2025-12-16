@@ -146,6 +146,31 @@ feature -- Test: Images
 			end
 		end
 
+	test_build_dockerfile_builder_generates_valid_output
+			-- Test DOCKERFILE_BUILDER produces valid Dockerfile content (P3).
+			-- This tests the builder API without actually calling Docker build,
+			-- which would require streaming response handling.
+		local
+			l_builder: DOCKERFILE_BUILDER
+			l_dockerfile: STRING
+		do
+			-- Create a simple Dockerfile using the builder
+			create l_builder.make ("alpine:latest")
+			l_builder.run ("echo 'test'")
+				.copy_files ("src", "/app")
+				.workdir ("/app")
+				.cmd (<<"./start.sh">>).do_nothing
+
+			l_dockerfile := l_builder.to_string
+
+			-- Verify the output contains expected directives
+			assert ("has FROM", l_dockerfile.has_substring ("FROM alpine:latest"))
+			assert ("has RUN", l_dockerfile.has_substring ("RUN echo"))
+			assert ("has COPY", l_dockerfile.has_substring ("COPY src /app"))
+			assert ("has WORKDIR", l_dockerfile.has_substring ("WORKDIR /app"))
+			assert ("has CMD", l_dockerfile.has_substring ("CMD"))
+		end
+
 feature -- Test: Containers
 
 	test_list_containers

@@ -539,6 +539,125 @@ feature -- Image Operations
 			Result := not has_error
 		end
 
+	build_image (a_context_path: STRING; a_tag: STRING): BOOLEAN
+			-- Build image from Dockerfile in `a_context_path' directory.
+			-- Tags the resulting image as `a_tag'.
+			-- Requires Dockerfile in the context directory.
+		require
+			context_path_not_empty: not a_context_path.is_empty
+			tag_not_empty: not a_tag.is_empty
+		local
+			l_archive: SIMPLE_ARCHIVE
+			l_tar_path: STRING
+			l_tar_data: STRING
+			l_file: RAW_FILE
+			l_response: STRING
+			l_uuid: UUID
+			l_uuid_gen: UUID_GENERATOR
+		do
+			last_error := Void
+
+			-- Generate unique temp tar file name
+			create l_uuid_gen
+			l_uuid := l_uuid_gen.generate_uuid
+			l_tar_path := a_context_path + "/.docker_build_" + l_uuid.out + ".tar"
+
+			-- Create tar archive from context directory
+			create l_archive.make
+			l_archive.create_archive_from_directory (l_tar_path, a_context_path)
+
+			if attached l_archive.last_error as archive_err then
+				-- Archive creation failed
+				create last_error.make (500, "Failed to create build context: " + archive_err)
+				logger.error ("Failed to create build context tar: " + archive_err)
+			else
+				-- Read tar file as binary
+				create l_file.make_open_read (l_tar_path)
+				if l_file.exists and then l_file.is_readable then
+					create l_tar_data.make (l_file.count)
+					l_file.read_stream (l_file.count)
+					l_tar_data := l_file.last_string
+					l_file.close
+
+					-- Send build request
+					l_response := do_binary_request ("/build?t=" + a_tag, l_tar_data, "application/x-tar")
+					Result := not has_error
+
+					-- Log build output for debugging
+					if not l_response.is_empty then
+						logger.debug_log ("Build response: " + l_response.substring (1, l_response.count.min (500)))
+					end
+				else
+					create last_error.make (500, "Cannot read build context tar file")
+					logger.error ("Cannot read tar file: " + l_tar_path)
+				end
+
+				-- Clean up temp tar file
+				create l_file.make_with_name (l_tar_path)
+				if l_file.exists then
+					l_file.delete
+				end
+			end
+		end
+
+	build_image_from_dockerfile (a_dockerfile: STRING; a_tag: STRING): BOOLEAN
+			-- Build image from a Dockerfile string.
+			-- Creates a minimal context with just the Dockerfile.
+		require
+			dockerfile_not_empty: not a_dockerfile.is_empty
+			tag_not_empty: not a_tag.is_empty
+		local
+			l_temp_dir: DIRECTORY
+			l_temp_path: STRING
+			l_dockerfile_path: STRING
+			l_file: PLAIN_TEXT_FILE
+			l_uuid: UUID
+			l_uuid_gen: UUID_GENERATOR
+			l_env: EXECUTION_ENVIRONMENT
+			l_temp_base: detachable STRING
+		do
+			last_error := Void
+
+			-- Get temp directory from environment
+			create l_env
+			l_temp_base := l_env.get ("TEMP")
+			if l_temp_base = Void then
+				l_temp_base := l_env.get ("TMP")
+			end
+			if l_temp_base = Void then
+				l_temp_base := "/tmp"
+			end
+
+			-- Create temp directory for build context
+			create l_uuid_gen
+			l_uuid := l_uuid_gen.generate_uuid
+			l_temp_path := l_temp_base + "/docker_build_" + l_uuid.out
+
+			create l_temp_dir.make (l_temp_path)
+			l_temp_dir.create_dir
+
+			if l_temp_dir.exists then
+				-- Write Dockerfile to temp directory
+				l_dockerfile_path := l_temp_path + "/Dockerfile"
+				create l_file.make_create_read_write (l_dockerfile_path)
+				l_file.put_string (a_dockerfile)
+				l_file.close
+
+				-- Build using the temp context
+				Result := build_image (l_temp_path, a_tag)
+
+				-- Clean up temp directory
+				create l_file.make_with_name (l_dockerfile_path)
+				if l_file.exists then
+					l_file.delete
+				end
+				l_temp_dir.delete
+			else
+				create last_error.make (500, "Failed to create temp build directory")
+				logger.error ("Cannot create temp directory: " + l_temp_path)
+			end
+		end
+
 feature -- Convenience
 
 	run_container (a_spec: CONTAINER_SPEC): detachable DOCKER_CONTAINER
@@ -1041,6 +1160,50 @@ feature {NONE} -- Implementation
 			Result := execute_request (a_method, build_raw_request (a_method, a_path, a_body))
 		ensure
 			result_exists: Result /= Void
+		end
+
+	do_binary_request (a_path: STRING; a_body: STRING; a_content_type: STRING): STRING
+			-- Execute POST request with binary body and custom content type.
+			-- Used for Docker build (tar archives) and other binary uploads.
+		require
+			path_not_empty: not a_path.is_empty
+			body_not_empty: not a_body.is_empty
+			content_type_not_empty: not a_content_type.is_empty
+		local
+			l_request: STRING
+			l_full_path: STRING
+		do
+			l_full_path := "/v" + api_version + a_path
+			l_request := build_binary_request (l_full_path, a_body, a_content_type)
+			Result := execute_request ("POST", l_request)
+		ensure
+			result_exists: Result /= Void
+		end
+
+	build_binary_request (a_path: STRING; a_body: STRING; a_content_type: STRING): STRING
+			-- Build HTTP/1.1 POST request with binary body.
+		require
+			path_not_empty: not a_path.is_empty
+			body_not_empty: not a_body.is_empty
+			content_type_not_empty: not a_content_type.is_empty
+		do
+			create Result.make (a_body.count + 500)
+			Result.append ("POST ")
+			Result.append (a_path)
+			Result.append (" HTTP/1.1%R%N")
+			Result.append ("Host: localhost%R%N")
+			Result.append ("Content-Type: ")
+			Result.append (a_content_type)
+			Result.append ("%R%N")
+			Result.append ("Content-Length: ")
+			Result.append_integer (a_body.count)
+			Result.append ("%R%N")
+			Result.append ("Connection: keep-alive%R%N")
+			Result.append ("%R%N")
+			Result.append (a_body)
+		ensure
+			result_not_empty: not Result.is_empty
+			has_http_version: Result.has_substring ("HTTP/1.1")
 		end
 
 	execute_request (a_method, a_request: STRING): STRING

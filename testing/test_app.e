@@ -38,6 +38,7 @@ feature -- Initialization
 			print ("%N=== Image Tests ===%N")
 			l_passed := l_passed + run_test (l_tests, "test_list_images", agent l_tests.test_list_images)
 			l_passed := l_passed + run_test (l_tests, "test_image_exists_alpine", agent l_tests.test_image_exists_alpine)
+			l_passed := l_passed + run_test (l_tests, "test_build_dockerfile_builder_generates_valid_output", agent l_tests.test_build_dockerfile_builder_generates_valid_output)
 
 			-- Container tests
 			print ("%N=== Container Tests ===%N")
@@ -99,7 +100,7 @@ feature -- Initialization
 			l_passed := l_passed + run_test (l_tests, "test_cookbook_image_primary_tag", agent l_tests.test_cookbook_image_primary_tag)
 			l_passed := l_passed + run_test (l_tests, "test_cookbook_error_is_retryable", agent l_tests.test_cookbook_error_is_retryable)
 
-			l_total := 38  -- 28 + 10 cookbook tests
+			l_total := 39  -- 29 + 10 cookbook tests
 			l_failed := l_total - l_passed
 
 			print ("%N======================================%N")
