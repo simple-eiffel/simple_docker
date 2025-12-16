@@ -17,11 +17,11 @@
 			<void_safety support="all"/>
 		</capability>
 		<library name="base" location="$ISE_LIBRARY\library\base\base.ecf"/>
-		<library name="simple_ipc" location="$SIMPLE_IPC\simple_ipc.ecf"/>
-		<library name="simple_json" location="$SIMPLE_JSON\simple_json.ecf"/>
-		<library name="simple_file" location="$SIMPLE_FILE\simple_file.ecf"/>
-		<library name="simple_logger" location="$SIMPLE_LOGGER\simple_logger.ecf"/>
-		<library name="simple_archive" location="$SIMPLE_ARCHIVE\simple_archive.ecf"/>
+		<library name="simple_ipc" location="$SIMPLE_EIFFEL/simple_ipc/simple_ipc.ecf"/>
+		<library name="simple_json" location="$SIMPLE_EIFFEL/simple_json/simple_json.ecf"/>
+		<library name="simple_file" location="$SIMPLE_EIFFEL/simple_file/simple_file.ecf"/>
+		<library name="simple_logger" location="$SIMPLE_EIFFEL/simple_logger/simple_logger.ecf"/>
+		<library name="simple_archive" location="$SIMPLE_EIFFEL/simple_archive/simple_archive.ecf"/>
 		<library name="uuid" location="$ISE_LIBRARY\library\uuid\uuid.ecf"/>
 		<cluster name="src" location=".\src\" recursive="true"/>
 	</target>
@@ -31,7 +31,7 @@
 			<assertions precondition="true" postcondition="true" check="true" invariant="true" loop="true" supplier_precondition="true"/>
 		</option>
 		<setting name="console_application" value="true"/>
-		<library name="simple_testing" location="$SIMPLE_TESTING\simple_testing.ecf"/>
+		<library name="simple_testing" location="$SIMPLE_EIFFEL/simple_testing/simple_testing.ecf"/>
 		<library name="testing" location="$ISE_LIBRARY\library\testing\testing.ecf"/>
 		<cluster name="tests" location=".\testing\" recursive="true"/>
 	</target>
