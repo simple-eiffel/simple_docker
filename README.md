@@ -9,7 +9,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Eiffel](https://img.shields.io/badge/Eiffel-25.02-blue.svg)](https://www.eiffel.org/)
 [![Design by Contract](https://img.shields.io/badge/DbC-enforced-orange.svg)]()
-[![Tests](https://img.shields.io/badge/tests-15%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-38%20passing-brightgreen.svg)]()
 
 Docker container management library for Eiffel. Build, run, and manage containers programmatically.
 
@@ -17,7 +17,7 @@ Part of the [Simple Eiffel](https://github.com/simple-eiffel) ecosystem.
 
 ## Status
 
-**Production** - 15 tests passing
+**Production** - 38 tests passing (v1.1.0)
 
 ## Overview
 
@@ -47,8 +47,13 @@ end
 
 - **Container Lifecycle** - Create, start, stop, pause, restart, kill, remove containers
 - **Image Management** - List, pull, inspect, and remove Docker images
+- **Network Management** - Create, list, connect, disconnect, and remove networks
+- **Volume Management** - Create, list, and remove volumes with driver configuration
+- **Exec Operations** - Execute commands in running containers
+- **Dockerfile Builder** - Fluent API for generating Dockerfiles with multi-stage support
 - **Fluent Builder API** - Configure containers with intuitive chained method calls
 - **Design by Contract** - Full preconditions, postconditions, and invariants
+- **Resilient IPC** - Automatic retry with exponential backoff on transient failures
 - **Windows Named Pipes** - Direct communication with Docker Engine via `\\.\pipe\docker_engine`
 - **Chunked Transfer Handling** - Proper HTTP/1.1 chunked encoding support
 - **Structured Logging** - Integration with simple_logger
@@ -197,8 +202,11 @@ end
 | `DOCKER_CLIENT` | Main facade for all Docker operations |
 | `DOCKER_CONTAINER` | Container representation with state and metadata |
 | `DOCKER_IMAGE` | Image representation with tags and size |
+| `DOCKER_NETWORK` | Network representation with driver and scope |
+| `DOCKER_VOLUME` | Volume representation with mount information |
 | `CONTAINER_SPEC` | Fluent builder for container configuration |
 | `CONTAINER_STATE` | State constants and transition queries |
+| `DOCKERFILE_BUILDER` | Fluent API for Dockerfile generation |
 | `DOCKER_ERROR` | Error classification and handling |
 
 ## Building & Testing
@@ -230,24 +238,31 @@ cd /d/prod/simple_docker
 ./EIFGENs/simple_docker_tests/F_code/simple_docker.exe
 ```
 
-**Test Results:** 15 tests passing
+**Test Results:** 38 tests passing
 
 ## Project Structure
 
 ```
 simple_docker/
 ├── src/                            # Eiffel source
-│   ├── docker_client.e             # Main facade
+│   ├── docker_client.e             # Main facade (with retry logic)
 │   ├── docker_container.e          # Container representation
 │   ├── docker_image.e              # Image representation
+│   ├── docker_network.e            # Network representation
+│   ├── docker_volume.e             # Volume representation
 │   ├── docker_error.e              # Error handling
 │   ├── container_spec.e            # Fluent builder
-│   └── container_state.e           # State constants
+│   ├── container_state.e           # State constants
+│   └── dockerfile_builder.e        # Dockerfile generation
 ├── testing/                        # Test suite
-│   ├── lib_tests.e                 # Test cases
+│   ├── lib_tests.e                 # Test cases (38 tests)
 │   └── test_app.e                  # Test runner
-├── docs/                           # Documentation
-│   ├── index.html                  # API docs
+├── docs/                           # IUARC 5-doc standard
+│   ├── index.html                  # Overview
+│   ├── user-guide.html             # User guide
+│   ├── api-reference.html          # API reference
+│   ├── architecture.html           # Architecture
+│   ├── cookbook.html               # Cookbook
 │   └── css/style.css               # Styling
 ├── simple_docker.ecf               # Library configuration
 ├── README.md                       # This file
@@ -261,9 +276,11 @@ simple_docker/
 - [x] Core container operations (v1.0)
 - [x] Image management (v1.0)
 - [x] Fluent builder API (v1.0)
-- [ ] DOCKERFILE_BUILDER - Fluent Dockerfile generation
-- [ ] DOCKER_NETWORK - Network operations
-- [ ] DOCKER_VOLUME - Volume operations
+- [x] DOCKERFILE_BUILDER - Fluent Dockerfile generation (v1.1)
+- [x] DOCKER_NETWORK - Network operations (v1.1)
+- [x] DOCKER_VOLUME - Volume operations (v1.1)
+- [x] Exec operations in containers (v1.1)
+- [x] Resilient IPC with retry logic (v1.1)
 - [ ] COMPOSE_BUILDER - docker-compose.yaml generation
 - [ ] Unix socket support (via simple_ipc)
 

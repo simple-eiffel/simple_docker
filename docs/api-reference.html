@@ -176,6 +176,129 @@
             </div>
 
             <div class="api-section">
+                <h3>Network Operations</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Parameters</th><th>Return</th><th>Description</th></tr>
+                    <tr>
+                        <td><code>list_networks</code></td>
+                        <td>-</td>
+                        <td>ARRAYED_LIST [DOCKER_NETWORK]</td>
+                        <td>List all networks.</td>
+                    </tr>
+                    <tr>
+                        <td><code>get_network</code></td>
+                        <td>a_id: STRING</td>
+                        <td>DOCKER_NETWORK</td>
+                        <td>Get network by ID or name.</td>
+                    </tr>
+                    <tr>
+                        <td><code>create_network</code></td>
+                        <td>a_name, a_driver: STRING</td>
+                        <td>DOCKER_NETWORK</td>
+                        <td>Create network with driver.</td>
+                    </tr>
+                    <tr>
+                        <td><code>remove_network</code></td>
+                        <td>a_id: STRING</td>
+                        <td>BOOLEAN</td>
+                        <td>Remove network.</td>
+                    </tr>
+                    <tr>
+                        <td><code>connect_container_to_network</code></td>
+                        <td>a_network_id, a_container_id: STRING</td>
+                        <td>BOOLEAN</td>
+                        <td>Connect container to network.</td>
+                    </tr>
+                    <tr>
+                        <td><code>disconnect_container_from_network</code></td>
+                        <td>a_network_id, a_container_id: STRING; a_force: BOOLEAN</td>
+                        <td>BOOLEAN</td>
+                        <td>Disconnect container from network.</td>
+                    </tr>
+                    <tr>
+                        <td><code>prune_networks</code></td>
+                        <td>-</td>
+                        <td>INTEGER</td>
+                        <td>Remove unused networks. Returns count.</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>Volume Operations</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Parameters</th><th>Return</th><th>Description</th></tr>
+                    <tr>
+                        <td><code>list_volumes</code></td>
+                        <td>-</td>
+                        <td>ARRAYED_LIST [DOCKER_VOLUME]</td>
+                        <td>List all volumes.</td>
+                    </tr>
+                    <tr>
+                        <td><code>get_volume</code></td>
+                        <td>a_name: STRING</td>
+                        <td>DOCKER_VOLUME</td>
+                        <td>Get volume by name.</td>
+                    </tr>
+                    <tr>
+                        <td><code>create_volume</code></td>
+                        <td>a_name: STRING</td>
+                        <td>DOCKER_VOLUME</td>
+                        <td>Create volume with local driver.</td>
+                    </tr>
+                    <tr>
+                        <td><code>create_volume_with_driver</code></td>
+                        <td>a_name, a_driver: STRING</td>
+                        <td>DOCKER_VOLUME</td>
+                        <td>Create volume with specific driver.</td>
+                    </tr>
+                    <tr>
+                        <td><code>remove_volume</code></td>
+                        <td>a_name: STRING; a_force: BOOLEAN</td>
+                        <td>BOOLEAN</td>
+                        <td>Remove volume.</td>
+                    </tr>
+                    <tr>
+                        <td><code>prune_volumes</code></td>
+                        <td>-</td>
+                        <td>INTEGER</td>
+                        <td>Remove unused volumes. Returns count.</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>Exec Operations</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Parameters</th><th>Return</th><th>Description</th></tr>
+                    <tr>
+                        <td><code>exec_in_container</code></td>
+                        <td>a_container_id: STRING; a_command: ARRAY [STRING]</td>
+                        <td>STRING</td>
+                        <td>Execute command and return output.</td>
+                    </tr>
+                    <tr>
+                        <td><code>create_exec</code></td>
+                        <td>a_container_id: STRING; a_command: ARRAY [STRING]; a_attach_stdout, a_attach_stderr: BOOLEAN</td>
+                        <td>STRING</td>
+                        <td>Create exec instance. Returns exec ID.</td>
+                    </tr>
+                    <tr>
+                        <td><code>start_exec</code></td>
+                        <td>a_exec_id: STRING</td>
+                        <td>STRING</td>
+                        <td>Start exec and return output.</td>
+                    </tr>
+                    <tr>
+                        <td><code>inspect_exec</code></td>
+                        <td>a_exec_id: STRING</td>
+                        <td>SIMPLE_JSON_OBJECT</td>
+                        <td>Get exec details including exit code.</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="api-section">
                 <h3>Error Handling</h3>
                 <table class="api-table">
                     <tr><th>Feature</th><th>Return Type</th><th>Description</th></tr>
@@ -473,6 +596,187 @@
                     <tr><td><code>can_stop (s)</code></td><td>Can container in state s be stopped?</td></tr>
                     <tr><td><code>can_pause (s)</code></td><td>Can container in state s be paused?</td></tr>
                     <tr><td><code>can_remove (s)</code></td><td>Can container in state s be removed?</td></tr>
+                </table>
+            </div>
+        </section>
+
+        <section id="dockerfile-builder">
+            <h2>DOCKERFILE_BUILDER</h2>
+            <p>Fluent builder for Dockerfile generation. Supports multi-stage builds.</p>
+
+            <div class="api-section">
+                <h3>Creation</h3>
+                <div class="signature">make (a_base_image: STRING)</div>
+                <p>Create builder with base image.</p>
+                <div class="signature">make_multi_stage</div>
+                <p>Create builder for multi-stage builds (no initial FROM).</p>
+            </div>
+
+            <div class="api-section">
+                <h3>FROM Instructions</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Parameters</th><th>Description</th></tr>
+                    <tr><td><code>from_image</code></td><td>a_image: STRING</td><td>Add FROM instruction</td></tr>
+                    <tr><td><code>from_image_as</code></td><td>a_image, a_stage_name: STRING</td><td>FROM with stage name</td></tr>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>Build Instructions</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Parameters</th><th>Description</th></tr>
+                    <tr><td><code>run</code></td><td>a_command: STRING</td><td>RUN instruction (shell form)</td></tr>
+                    <tr><td><code>run_exec</code></td><td>a_args: ARRAY [STRING]</td><td>RUN instruction (exec form)</td></tr>
+                    <tr><td><code>run_multi</code></td><td>a_commands: ARRAY [STRING]</td><td>RUN with && chaining</td></tr>
+                    <tr><td><code>copy_files</code></td><td>a_src, a_dest: STRING</td><td>COPY instruction</td></tr>
+                    <tr><td><code>copy_from</code></td><td>a_stage, a_src, a_dest: STRING</td><td>COPY --from for multi-stage</td></tr>
+                    <tr><td><code>add</code></td><td>a_src, a_dest: STRING</td><td>ADD instruction</td></tr>
+                    <tr><td><code>workdir</code></td><td>a_dir: STRING</td><td>WORKDIR instruction</td></tr>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>Environment and Args</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Parameters</th><th>Description</th></tr>
+                    <tr><td><code>env</code></td><td>a_key, a_value: STRING</td><td>ENV instruction</td></tr>
+                    <tr><td><code>arg</code></td><td>a_name: STRING</td><td>ARG without default</td></tr>
+                    <tr><td><code>arg_default</code></td><td>a_name, a_default: STRING</td><td>ARG with default value</td></tr>
+                    <tr><td><code>label</code></td><td>a_key, a_value: STRING</td><td>LABEL instruction</td></tr>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>Runtime Configuration</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Parameters</th><th>Description</th></tr>
+                    <tr><td><code>expose</code></td><td>a_port: INTEGER</td><td>EXPOSE TCP port</td></tr>
+                    <tr><td><code>expose_udp</code></td><td>a_port: INTEGER</td><td>EXPOSE UDP port</td></tr>
+                    <tr><td><code>cmd</code></td><td>a_args: ARRAY [STRING]</td><td>CMD (exec form)</td></tr>
+                    <tr><td><code>cmd_shell</code></td><td>a_command: STRING</td><td>CMD (shell form)</td></tr>
+                    <tr><td><code>entrypoint</code></td><td>a_args: ARRAY [STRING]</td><td>ENTRYPOINT (exec form)</td></tr>
+                    <tr><td><code>user</code></td><td>a_user: STRING</td><td>USER instruction</td></tr>
+                    <tr><td><code>volume</code></td><td>a_path: STRING</td><td>VOLUME instruction</td></tr>
+                    <tr><td><code>healthcheck</code></td><td>a_cmd: STRING</td><td>HEALTHCHECK CMD</td></tr>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>Output</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Return</th><th>Description</th></tr>
+                    <tr><td><code>to_string</code></td><td>STRING</td><td>Generate Dockerfile content</td></tr>
+                    <tr><td><code>save_to_file</code></td><td>BOOLEAN</td><td>Save to file path</td></tr>
+                </table>
+            </div>
+        </section>
+
+        <section id="docker-network">
+            <h2>DOCKER_NETWORK</h2>
+            <p>Network representation with configuration and connected containers.</p>
+
+            <div class="api-section">
+                <h3>Identification</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Type</th><th>Description</th></tr>
+                    <tr><td><code>id</code></td><td>STRING</td><td>Full network ID</td></tr>
+                    <tr><td><code>short_id</code></td><td>STRING</td><td>Short ID (12 chars)</td></tr>
+                    <tr><td><code>name</code></td><td>STRING</td><td>Network name</td></tr>
+                    <tr><td><code>driver</code></td><td>STRING</td><td>Network driver (bridge, host, overlay)</td></tr>
+                    <tr><td><code>scope</code></td><td>STRING</td><td>Scope (local, global, swarm)</td></tr>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>IPAM</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Type</th><th>Description</th></tr>
+                    <tr><td><code>ipam_driver_name</code></td><td>STRING</td><td>IPAM driver</td></tr>
+                    <tr><td><code>ipam_subnet</code></td><td>STRING</td><td>Subnet (e.g., "172.17.0.0/16")</td></tr>
+                    <tr><td><code>ipam_gateway</code></td><td>STRING</td><td>Gateway (e.g., "172.17.0.1")</td></tr>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>Configuration Flags</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Type</th><th>Description</th></tr>
+                    <tr><td><code>enable_ipv6</code></td><td>BOOLEAN</td><td>IPv6 enabled?</td></tr>
+                    <tr><td><code>is_internal</code></td><td>BOOLEAN</td><td>Internal network?</td></tr>
+                    <tr><td><code>is_attachable</code></td><td>BOOLEAN</td><td>Can attach containers?</td></tr>
+                    <tr><td><code>is_ingress</code></td><td>BOOLEAN</td><td>Swarm ingress network?</td></tr>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>Containers</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Type</th><th>Description</th></tr>
+                    <tr><td><code>containers</code></td><td>ARRAYED_LIST [TUPLE]</td><td>Connected containers</td></tr>
+                    <tr><td><code>container_count</code></td><td>INTEGER</td><td>Number of containers</td></tr>
+                    <tr><td><code>has_container</code></td><td>BOOLEAN</td><td>Is container connected?</td></tr>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>Type Queries</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Description</th></tr>
+                    <tr><td><code>is_bridge</code></td><td>Bridge network?</td></tr>
+                    <tr><td><code>is_host</code></td><td>Host network?</td></tr>
+                    <tr><td><code>is_overlay</code></td><td>Overlay network?</td></tr>
+                    <tr><td><code>is_default</code></td><td>Default Docker network?</td></tr>
+                    <tr><td><code>matches</code></td><td>Match by ID, short ID, or name</td></tr>
+                </table>
+            </div>
+        </section>
+
+        <section id="docker-volume">
+            <h2>DOCKER_VOLUME</h2>
+            <p>Volume representation with driver and mount information.</p>
+
+            <div class="api-section">
+                <h3>Identification</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Type</th><th>Description</th></tr>
+                    <tr><td><code>name</code></td><td>STRING</td><td>Volume name</td></tr>
+                    <tr><td><code>driver</code></td><td>STRING</td><td>Volume driver (local, nfs, etc.)</td></tr>
+                    <tr><td><code>mountpoint</code></td><td>STRING</td><td>Host mount path</td></tr>
+                    <tr><td><code>scope</code></td><td>STRING</td><td>Scope (local, global)</td></tr>
+                    <tr><td><code>created_at</code></td><td>STRING</td><td>Creation timestamp</td></tr>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>Usage</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Type</th><th>Description</th></tr>
+                    <tr><td><code>size</code></td><td>INTEGER_64</td><td>Size in bytes</td></tr>
+                    <tr><td><code>size_mb</code></td><td>REAL_64</td><td>Size in megabytes</td></tr>
+                    <tr><td><code>size_gb</code></td><td>REAL_64</td><td>Size in gigabytes</td></tr>
+                    <tr><td><code>ref_count</code></td><td>INTEGER</td><td>Container references</td></tr>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>Labels and Options</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Type</th><th>Description</th></tr>
+                    <tr><td><code>labels</code></td><td>ARRAYED_LIST [TUPLE]</td><td>Volume labels</td></tr>
+                    <tr><td><code>options</code></td><td>ARRAYED_LIST [TUPLE]</td><td>Driver options</td></tr>
+                    <tr><td><code>has_label</code></td><td>BOOLEAN</td><td>Has label with key?</td></tr>
+                    <tr><td><code>label_value</code></td><td>STRING</td><td>Get label value</td></tr>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>Queries</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Description</th></tr>
+                    <tr><td><code>is_local</code></td><td>Local driver volume?</td></tr>
+                    <tr><td><code>is_in_use</code></td><td>Used by any container?</td></tr>
+                    <tr><td><code>is_anonymous</code></td><td>Anonymous volume (64-char hex)?</td></tr>
+                    <tr><td><code>matches</code></td><td>Match by name</td></tr>
                 </table>
             </div>
         </section>

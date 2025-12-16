@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-12-15
+
+### Added
+- **Phase 2 Features**
+  - `DOCKERFILE_BUILDER` - Fluent API for Dockerfile generation
+    - Single and multi-stage build support
+    - All Dockerfile instructions: FROM, RUN, COPY, ADD, ENV, EXPOSE, WORKDIR, etc.
+    - Labels, ARGs, and build-time variables
+    - Stage naming for multi-stage builds with `from_image_as`
+  - `DOCKER_NETWORK` - Network representation and operations
+    - Properties: id, name, driver, scope, internal, attachable, ingress
+    - Queries: `is_bridge`, `is_host`, `is_overlay`, `is_internal`, `matches`
+    - Client operations: `list_networks`, `get_network`, `create_network`, `remove_network`
+    - Container connection: `connect_container_to_network`, `disconnect_container_from_network`
+    - Pruning: `prune_networks`
+  - `DOCKER_VOLUME` - Volume representation and operations
+    - Properties: name, driver, mountpoint, scope, labels, options
+    - Queries: `is_local`, `is_in_use`, `is_anonymous`, `size_mb`, `size_gb`
+    - Client operations: `list_volumes`, `get_volume`, `create_volume`, `create_volume_with_driver`, `remove_volume`
+    - Pruning: `prune_volumes`
+  - Exec operations for running commands in containers
+    - `exec_in_container` - Execute command and get output
+    - `create_exec`, `start_exec`, `inspect_exec` - Low-level exec API
+- **Resilient IPC with rescue/retry**
+  - `DOCKER_CLIENT` constructors retry up to 3 times on IPC failures
+  - `execute_request` retries with 100ms delays on transient failures
+  - Automatic IPC reconnection on failure
+  - Configurable via `default_retry_count` and `default_retry_delay_ms`
+- **Cookbook verification tests** - 10 tests that dogfood documentation examples
+- **Strengthened contracts** - Postconditions on all network, volume, and exec operations
+
+### Changed
+- Test count increased from 15 to 38 tests
+- Documentation updated to IUARC 5-doc standard
+
 ## [1.0.0] - 2025-12-15
 
 ### Added

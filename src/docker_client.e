@@ -33,6 +33,10 @@ feature {NONE} -- Initialization
 
 	make
 			-- Create client with default Docker endpoint.
+			-- Uses rescue/retry for transient IPC connection failures.
+		local
+			l_retry_count: INTEGER
+			l_env: EXECUTION_ENVIRONMENT
 		do
 			if {PLATFORM}.is_windows then
 				endpoint := default_windows_endpoint
@@ -49,12 +53,25 @@ feature {NONE} -- Initialization
 			api_version_set: not api_version.is_empty
 			connection_exists: connection /= Void
 			logger_exists: logger /= Void
+		rescue
+			-- Retry on IPC connection failures
+			l_retry_count := l_retry_count + 1
+			if l_retry_count <= default_retry_count then
+				-- Delay before retry
+				create l_env
+				l_env.sleep (default_retry_delay_ms * 1_000_000)
+				retry
+			end
 		end
 
 	make_with_endpoint (a_endpoint: STRING)
 			-- Create client with custom `a_endpoint'.
+			-- Uses rescue/retry for transient IPC connection failures.
 		require
 			endpoint_not_empty: not a_endpoint.is_empty
+		local
+			l_retry_count: INTEGER
+			l_env: EXECUTION_ENVIRONMENT
 		do
 			endpoint := a_endpoint
 			api_version := default_api_version
@@ -68,6 +85,15 @@ feature {NONE} -- Initialization
 			api_version_set: not api_version.is_empty
 			connection_exists: connection /= Void
 			logger_exists: logger /= Void
+		rescue
+			-- Retry on IPC connection failures
+			l_retry_count := l_retry_count + 1
+			if l_retry_count <= default_retry_count then
+				-- Delay before retry
+				create l_env
+				l_env.sleep (default_retry_delay_ms * 1_000_000)
+				retry
+			end
 		end
 
 feature -- Constants
@@ -83,6 +109,12 @@ feature -- Constants
 
 	default_buffer_size: INTEGER = 65536
 			-- Default read buffer size.
+
+	default_retry_count: INTEGER = 3
+			-- Default number of retries for IPC operations.
+
+	default_retry_delay_ms: INTEGER = 100
+			-- Default delay between retries in milliseconds.
 
 feature -- Access
 
@@ -522,6 +554,461 @@ feature -- Convenience
 			end
 		end
 
+feature -- Network Operations
+
+	list_networks: ARRAYED_LIST [DOCKER_NETWORK]
+			-- List all networks.
+		local
+			l_response: STRING
+			l_json: SIMPLE_JSON
+			l_array: SIMPLE_JSON_ARRAY
+			i: INTEGER
+		do
+			last_error := Void
+			create Result.make (10)
+
+			l_response := do_request ("GET", "/networks", Void)
+			if not has_error and then not l_response.is_empty then
+				create l_json
+				if attached l_json.parse (l_response) as v and then v.is_array then
+					l_array := v.as_array
+					from i := 1 until i > l_array.count loop
+						if attached l_array.object_item (i) as obj then
+							Result.extend (create {DOCKER_NETWORK}.make_from_json (obj))
+						end
+						i := i + 1
+					end
+				end
+			end
+		ensure
+			result_exists: Result /= Void
+			all_networks_valid: across Result as n all n.id /= Void and n.driver /= Void end
+		end
+
+	get_network (a_id: STRING): detachable DOCKER_NETWORK
+			-- Get network by ID or name.
+		require
+			id_not_void: a_id /= Void
+			id_not_empty: not a_id.is_empty
+		local
+			l_response: STRING
+			l_json: SIMPLE_JSON
+		do
+			last_error := Void
+			l_response := do_request ("GET", "/networks/" + a_id, Void)
+			if not has_error and then not l_response.is_empty then
+				create l_json
+				if attached l_json.parse (l_response) as v and then v.is_object then
+					create Result.make_from_json (v.as_object)
+				end
+			end
+		ensure
+			result_matches_id: attached Result implies Result.matches (a_id)
+			result_or_error: Result /= Void xor has_error
+		end
+
+	create_network (a_name: STRING; a_driver: STRING): detachable DOCKER_NETWORK
+			-- Create a new network with name and driver.
+		require
+			name_not_void: a_name /= Void
+			name_not_empty: not a_name.is_empty
+			driver_not_void: a_driver /= Void
+			driver_not_empty: not a_driver.is_empty
+		local
+			l_body: STRING
+			l_response: STRING
+			l_json: SIMPLE_JSON
+			l_id: detachable STRING_32
+		do
+			last_error := Void
+
+			-- Build JSON body
+			create l_body.make (100)
+			l_body.append ("{%"Name%":%"")
+			l_body.append (a_name)
+			l_body.append ("%",%"Driver%":%"")
+			l_body.append (a_driver)
+			l_body.append ("%"}")
+
+			l_response := do_request ("POST", "/networks/create", l_body)
+
+			if not has_error and then not l_response.is_empty then
+				create l_json
+				if attached l_json.parse (l_response) as v and then v.is_object then
+					l_id := v.as_object.string_item ("Id")
+					if attached l_id as lid then
+						create Result.make (lid.to_string_8)
+						Result.name.copy (a_name)
+						Result.driver.copy (a_driver)
+					end
+				end
+			end
+		ensure
+			result_matches_name: attached Result implies Result.name.same_string (a_name)
+			result_matches_driver: attached Result implies Result.driver.same_string (a_driver)
+			result_or_error: Result /= Void xor has_error
+		end
+
+	remove_network (a_id: STRING): BOOLEAN
+			-- Remove a network by ID or name.
+		require
+			id_not_void: a_id /= Void
+			id_not_empty: not a_id.is_empty
+		local
+			l_response: STRING
+		do
+			last_error := Void
+			l_response := do_request ("DELETE", "/networks/" + a_id, Void)
+			Result := not has_error
+		ensure
+			result_consistent: Result = not has_error
+		end
+
+	connect_container_to_network (a_network_id, a_container_id: STRING): BOOLEAN
+			-- Connect container to network.
+		require
+			network_id_not_void: a_network_id /= Void
+			network_id_not_empty: not a_network_id.is_empty
+			container_id_not_void: a_container_id /= Void
+			container_id_not_empty: not a_container_id.is_empty
+		local
+			l_body: STRING
+			l_response: STRING
+		do
+			last_error := Void
+
+			create l_body.make (100)
+			l_body.append ("{%"Container%":%"")
+			l_body.append (a_container_id)
+			l_body.append ("%"}")
+
+			l_response := do_request ("POST", "/networks/" + a_network_id + "/connect", l_body)
+			Result := not has_error
+		ensure
+			result_consistent: Result = not has_error
+		end
+
+	disconnect_container_from_network (a_network_id, a_container_id: STRING; a_force: BOOLEAN): BOOLEAN
+			-- Disconnect container from network.
+		require
+			network_id_not_void: a_network_id /= Void
+			network_id_not_empty: not a_network_id.is_empty
+			container_id_not_void: a_container_id /= Void
+			container_id_not_empty: not a_container_id.is_empty
+		local
+			l_body: STRING
+			l_response: STRING
+		do
+			last_error := Void
+
+			create l_body.make (100)
+			l_body.append ("{%"Container%":%"")
+			l_body.append (a_container_id)
+			l_body.append ("%",%"Force%":")
+			if a_force then
+				l_body.append ("true")
+			else
+				l_body.append ("false")
+			end
+			l_body.append ("}")
+
+			l_response := do_request ("POST", "/networks/" + a_network_id + "/disconnect", l_body)
+			Result := not has_error
+		ensure
+			result_consistent: Result = not has_error
+		end
+
+	prune_networks: INTEGER
+			-- Remove all unused networks. Returns count of removed networks.
+		local
+			l_response: STRING
+			l_json: SIMPLE_JSON
+			l_deleted: detachable SIMPLE_JSON_ARRAY
+		do
+			last_error := Void
+			l_response := do_request ("POST", "/networks/prune", Void)
+			if not has_error and then not l_response.is_empty then
+				create l_json
+				if attached l_json.parse (l_response) as v and then v.is_object then
+					l_deleted := v.as_object.array_item ("NetworksDeleted")
+					if attached l_deleted as arr then
+						Result := arr.count
+					end
+				end
+			end
+		ensure
+			non_negative: Result >= 0
+		end
+
+feature -- Volume Operations
+
+	list_volumes: ARRAYED_LIST [DOCKER_VOLUME]
+			-- List all volumes.
+		local
+			l_response: STRING
+			l_json: SIMPLE_JSON
+			l_volumes: detachable SIMPLE_JSON_ARRAY
+			i: INTEGER
+		do
+			last_error := Void
+			create Result.make (20)
+
+			l_response := do_request ("GET", "/volumes", Void)
+			if not has_error and then not l_response.is_empty then
+				create l_json
+				if attached l_json.parse (l_response) as v and then v.is_object then
+					-- Volumes API returns {"Volumes": [...], "Warnings": [...]}
+					l_volumes := v.as_object.array_item ("Volumes")
+					if attached l_volumes as arr then
+						from i := 1 until i > arr.count loop
+							if attached arr.object_item (i) as obj then
+								Result.extend (create {DOCKER_VOLUME}.make_from_json (obj))
+							end
+							i := i + 1
+						end
+					end
+				end
+			end
+		ensure
+			result_exists: Result /= Void
+			all_volumes_valid: across Result as v all v.name /= Void and v.driver /= Void end
+		end
+
+	get_volume (a_name: STRING): detachable DOCKER_VOLUME
+			-- Get volume by name.
+		require
+			name_not_void: a_name /= Void
+			name_not_empty: not a_name.is_empty
+		local
+			l_response: STRING
+			l_json: SIMPLE_JSON
+		do
+			last_error := Void
+			l_response := do_request ("GET", "/volumes/" + a_name, Void)
+			if not has_error and then not l_response.is_empty then
+				create l_json
+				if attached l_json.parse (l_response) as v and then v.is_object then
+					create Result.make_from_json (v.as_object)
+				end
+			end
+		ensure
+			result_matches_name: attached Result implies Result.name.same_string (a_name)
+			result_or_error: Result /= Void xor has_error
+		end
+
+	create_volume (a_name: STRING): detachable DOCKER_VOLUME
+			-- Create a new volume with default driver.
+		require
+			name_not_void: a_name /= Void
+			name_not_empty: not a_name.is_empty
+		do
+			Result := create_volume_with_driver (a_name, "local")
+		ensure
+			result_has_local_driver: attached Result implies Result.driver.same_string ("local")
+			result_matches_name: attached Result implies Result.name.same_string (a_name)
+			result_or_error: Result /= Void xor has_error
+		end
+
+	create_volume_with_driver (a_name, a_driver: STRING): detachable DOCKER_VOLUME
+			-- Create a new volume with specific driver.
+		require
+			name_not_void: a_name /= Void
+			name_not_empty: not a_name.is_empty
+			driver_not_void: a_driver /= Void
+			driver_not_empty: not a_driver.is_empty
+		local
+			l_body: STRING
+			l_response: STRING
+			l_json: SIMPLE_JSON
+		do
+			last_error := Void
+
+			create l_body.make (100)
+			l_body.append ("{%"Name%":%"")
+			l_body.append (a_name)
+			l_body.append ("%",%"Driver%":%"")
+			l_body.append (a_driver)
+			l_body.append ("%"}")
+
+			l_response := do_request ("POST", "/volumes/create", l_body)
+
+			if not has_error and then not l_response.is_empty then
+				create l_json
+				if attached l_json.parse (l_response) as v and then v.is_object then
+					create Result.make_from_json (v.as_object)
+				end
+			end
+		ensure
+			result_matches_name: attached Result implies Result.name.same_string (a_name)
+			result_matches_driver: attached Result implies Result.driver.same_string (a_driver)
+			result_or_error: Result /= Void xor has_error
+		end
+
+	remove_volume (a_name: STRING; a_force: BOOLEAN): BOOLEAN
+			-- Remove a volume. If `a_force', remove even if in use.
+		require
+			name_not_void: a_name /= Void
+			name_not_empty: not a_name.is_empty
+		local
+			l_path: STRING
+			l_response: STRING
+		do
+			last_error := Void
+			l_path := "/volumes/" + a_name
+			if a_force then
+				l_path.append ("?force=true")
+			end
+			l_response := do_request ("DELETE", l_path, Void)
+			Result := not has_error
+		ensure
+			result_consistent: Result = not has_error
+		end
+
+	prune_volumes: INTEGER
+			-- Remove all unused volumes. Returns count of removed volumes.
+		local
+			l_response: STRING
+			l_json: SIMPLE_JSON
+			l_deleted: detachable SIMPLE_JSON_ARRAY
+		do
+			last_error := Void
+			l_response := do_request ("POST", "/volumes/prune", Void)
+			if not has_error and then not l_response.is_empty then
+				create l_json
+				if attached l_json.parse (l_response) as v and then v.is_object then
+					l_deleted := v.as_object.array_item ("VolumesDeleted")
+					if attached l_deleted as arr then
+						Result := arr.count
+					end
+				end
+			end
+		ensure
+			non_negative: Result >= 0
+		end
+
+feature -- Exec Operations
+
+	exec_in_container (a_container_id: STRING; a_command: ARRAY [STRING]): detachable STRING
+			-- Execute command in running container. Returns output.
+		require
+			container_id_not_void: a_container_id /= Void
+			container_id_not_empty: not a_container_id.is_empty
+			command_not_void: a_command /= Void
+			command_not_empty: a_command.count > 0
+			all_commands_valid: across a_command as c all c /= Void end
+		local
+			l_exec_id: detachable STRING
+		do
+			l_exec_id := create_exec (a_container_id, a_command, True, True)
+			if attached l_exec_id as eid then
+				Result := start_exec (eid)
+			end
+		ensure
+			result_or_error: Result /= Void xor has_error
+		end
+
+	create_exec (a_container_id: STRING; a_command: ARRAY [STRING];
+			a_attach_stdout, a_attach_stderr: BOOLEAN): detachable STRING
+			-- Create exec instance. Returns exec ID.
+		require
+			container_id_not_void: a_container_id /= Void
+			container_id_not_empty: not a_container_id.is_empty
+			command_not_void: a_command /= Void
+			command_not_empty: a_command.count > 0
+			all_commands_valid: across a_command as c all c /= Void end
+		local
+			l_body: STRING
+			l_response: STRING
+			l_json: SIMPLE_JSON
+			i: INTEGER
+		do
+			last_error := Void
+
+			-- Build JSON body
+			create l_body.make (200)
+			l_body.append ("{%"AttachStdin%":false")
+			l_body.append (",%"AttachStdout%":")
+			if a_attach_stdout then
+				l_body.append ("true")
+			else
+				l_body.append ("false")
+			end
+			l_body.append (",%"AttachStderr%":")
+			if a_attach_stderr then
+				l_body.append ("true")
+			else
+				l_body.append ("false")
+			end
+			l_body.append (",%"Tty%":false")
+			l_body.append (",%"Cmd%":[")
+			from i := a_command.lower until i > a_command.upper loop
+				if i > a_command.lower then
+					l_body.append (",")
+				end
+				l_body.append ("%"")
+				l_body.append (escape_json_string (a_command [i]))
+				l_body.append ("%"")
+				i := i + 1
+			end
+			l_body.append ("]}")
+
+			l_response := do_request ("POST", "/containers/" + a_container_id + "/exec", l_body)
+
+			if not has_error and then not l_response.is_empty then
+				create l_json
+				if attached l_json.parse (l_response) as v and then v.is_object then
+					if attached v.as_object.string_item ("Id") as eid then
+						Result := eid.to_string_8
+					end
+				end
+			end
+		ensure
+			result_is_exec_id: attached Result implies not Result.is_empty
+			result_or_error: Result /= Void xor has_error
+		end
+
+	start_exec (a_exec_id: STRING): detachable STRING
+			-- Start exec instance and return output.
+		require
+			exec_id_not_void: a_exec_id /= Void
+			exec_id_not_empty: not a_exec_id.is_empty
+		local
+			l_body: STRING
+			l_response: STRING
+		do
+			last_error := Void
+
+			l_body := "{%"Detach%":false,%"Tty%":false}"
+			l_response := do_request ("POST", "/exec/" + a_exec_id + "/start", l_body)
+
+			if not has_error then
+				Result := l_response
+			end
+		ensure
+			result_or_error: Result /= Void xor has_error
+		end
+
+	inspect_exec (a_exec_id: STRING): detachable SIMPLE_JSON_OBJECT
+			-- Get exec instance details including exit code.
+		require
+			exec_id_not_void: a_exec_id /= Void
+			exec_id_not_empty: not a_exec_id.is_empty
+		local
+			l_response: STRING
+			l_json: SIMPLE_JSON
+		do
+			last_error := Void
+			l_response := do_request ("GET", "/exec/" + a_exec_id + "/json", Void)
+			if not has_error and then not l_response.is_empty then
+				create l_json
+				if attached l_json.parse (l_response) as v and then v.is_object then
+					Result := v.as_object
+				end
+			end
+		ensure
+			result_or_error: Result /= Void xor has_error
+		end
+
 feature {NONE} -- Implementation
 
 	connection: SIMPLE_IPC
@@ -558,6 +1045,7 @@ feature {NONE} -- Implementation
 
 	execute_request (a_method, a_request: STRING): STRING
 			-- Execute prepared HTTP request and parse response.
+			-- Uses rescue/retry for transient IPC failures.
 		require
 			request_not_empty: not a_request.is_empty
 		local
@@ -567,10 +1055,17 @@ feature {NONE} -- Implementation
 			l_is_chunked: BOOLEAN
 			l_read_more: BOOLEAN
 			l_max_reads: INTEGER
+			l_retry_count: INTEGER
+			l_env: EXECUTION_ENVIRONMENT
+			l_failed: BOOLEAN
 		do
 			create Result.make_empty
 
-			if not connection.is_valid then
+			if l_failed then
+				-- Came here from rescue after max retries
+				create last_error.make_connection_error ("IPC operation failed after " + default_retry_count.out + " retries")
+				logger.error ("IPC operation failed after " + default_retry_count.out + " retries")
+			elseif not connection.is_valid then
 				create last_error.make_connection_error ("Not connected to Docker daemon")
 				logger.error ("Not connected to Docker daemon")
 			else
@@ -636,6 +1131,21 @@ feature {NONE} -- Implementation
 			end
 		ensure
 			result_exists: Result /= Void
+		rescue
+			-- Retry on IPC failures (transient connection issues)
+			l_retry_count := l_retry_count + 1
+			if l_retry_count <= default_retry_count then
+				logger.warn ("IPC operation failed, retry " + l_retry_count.out + " of " + default_retry_count.out)
+				-- Delay before retry
+				create l_env
+				l_env.sleep (default_retry_delay_ms * 1_000_000) -- Convert ms to nanoseconds
+				-- Reconnect IPC
+				create connection.make_client (endpoint)
+				retry
+			else
+				l_failed := True
+				retry
+			end
 		end
 
 	build_request (a_method, a_path: STRING; a_body: detachable STRING): STRING
@@ -786,6 +1296,35 @@ feature {NONE} -- Implementation
 				c := a_str.item (i)
 				Result.append (c.code.to_hex_string.substring (7, 8))
 				Result.append (" ")
+				i := i + 1
+			end
+		ensure
+			result_exists: Result /= Void
+		end
+
+	escape_json_string (a_str: STRING): STRING
+			-- Escape special characters in string for JSON.
+		local
+			i: INTEGER
+			c: CHARACTER
+		do
+			create Result.make (a_str.count + 10)
+			from i := 1 until i > a_str.count loop
+				c := a_str.item (i)
+				inspect c
+				when '\' then
+					Result.append ("\\")
+				when '"' then
+					Result.append ("\%"")
+				when '%N' then
+					Result.append ("\n")
+				when '%R' then
+					Result.append ("\r")
+				when '%T' then
+					Result.append ("\t")
+				else
+					Result.append_character (c)
+				end
 				i := i + 1
 			end
 		ensure

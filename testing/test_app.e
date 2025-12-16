@@ -61,7 +61,45 @@ feature -- Initialization
 			l_passed := l_passed + run_test (l_tests, "test_error_creation", agent l_tests.test_error_creation)
 			l_passed := l_passed + run_test (l_tests, "test_error_connection", agent l_tests.test_error_connection)
 
-			l_total := 15
+			-- Dockerfile Builder tests (P2)
+			print ("%N=== Dockerfile Builder Tests (P2) ===%N")
+			l_passed := l_passed + run_test (l_tests, "test_dockerfile_basic", agent l_tests.test_dockerfile_basic)
+			l_passed := l_passed + run_test (l_tests, "test_dockerfile_fluent_api", agent l_tests.test_dockerfile_fluent_api)
+			l_passed := l_passed + run_test (l_tests, "test_dockerfile_multistage", agent l_tests.test_dockerfile_multistage)
+			l_passed := l_passed + run_test (l_tests, "test_dockerfile_labels_and_args", agent l_tests.test_dockerfile_labels_and_args)
+
+			-- Network tests (P2)
+			print ("%N=== Network Tests (P2) ===%N")
+			l_passed := l_passed + run_test (l_tests, "test_network_creation", agent l_tests.test_network_creation)
+			l_passed := l_passed + run_test (l_tests, "test_network_queries", agent l_tests.test_network_queries)
+			l_passed := l_passed + run_test (l_tests, "test_list_networks", agent l_tests.test_list_networks)
+			l_passed := l_passed + run_test (l_tests, "test_create_and_remove_network", agent l_tests.test_create_and_remove_network)
+
+			-- Volume tests (P2)
+			print ("%N=== Volume Tests (P2) ===%N")
+			l_passed := l_passed + run_test (l_tests, "test_volume_creation", agent l_tests.test_volume_creation)
+			l_passed := l_passed + run_test (l_tests, "test_volume_anonymous_detection", agent l_tests.test_volume_anonymous_detection)
+			l_passed := l_passed + run_test (l_tests, "test_list_volumes", agent l_tests.test_list_volumes)
+			l_passed := l_passed + run_test (l_tests, "test_create_and_remove_volume", agent l_tests.test_create_and_remove_volume)
+
+			-- Exec tests (P2)
+			print ("%N=== Exec Tests (P2) ===%N")
+			l_passed := l_passed + run_test (l_tests, "test_exec_in_container", agent l_tests.test_exec_in_container)
+
+			-- Cookbook verification tests (dogfooding)
+			print ("%N=== Cookbook Verification Tests ===%N")
+			l_passed := l_passed + run_test (l_tests, "test_cookbook_spec_add_port", agent l_tests.test_cookbook_spec_add_port)
+			l_passed := l_passed + run_test (l_tests, "test_cookbook_spec_add_volume", agent l_tests.test_cookbook_spec_add_volume)
+			l_passed := l_passed + run_test (l_tests, "test_cookbook_spec_restart_policy", agent l_tests.test_cookbook_spec_restart_policy)
+			l_passed := l_passed + run_test (l_tests, "test_cookbook_spec_hostname", agent l_tests.test_cookbook_spec_hostname)
+			l_passed := l_passed + run_test (l_tests, "test_cookbook_spec_memory_limit", agent l_tests.test_cookbook_spec_memory_limit)
+			l_passed := l_passed + run_test (l_tests, "test_cookbook_spec_auto_remove", agent l_tests.test_cookbook_spec_auto_remove)
+			l_passed := l_passed + run_test (l_tests, "test_cookbook_container_exit_code", agent l_tests.test_cookbook_container_exit_code)
+			l_passed := l_passed + run_test (l_tests, "test_cookbook_container_is_dead", agent l_tests.test_cookbook_container_is_dead)
+			l_passed := l_passed + run_test (l_tests, "test_cookbook_image_primary_tag", agent l_tests.test_cookbook_image_primary_tag)
+			l_passed := l_passed + run_test (l_tests, "test_cookbook_error_is_retryable", agent l_tests.test_cookbook_error_is_retryable)
+
+			l_total := 38  -- 28 + 10 cookbook tests
 			l_failed := l_total - l_passed
 
 			print ("%N======================================%N")

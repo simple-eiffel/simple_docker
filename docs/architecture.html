@@ -44,6 +44,12 @@
     |
     +-- DOCKER_IMAGE (model)
     |
+    +-- DOCKER_NETWORK (model)
+    |
+    +-- DOCKER_VOLUME (model)
+    |
+    +-- DOCKERFILE_BUILDER (builder)
+    |
     +-- DOCKER_ERROR (error handling)
     |
     +-- CONTAINER_STATE (constants)</code></pre>
@@ -307,11 +313,18 @@ decode_chunked_body (a_chunked: STRING): STRING
 
             <h3>Planned Additions</h3>
             <ul>
-                <li><strong>DOCKERFILE_BUILDER</strong> - Fluent Dockerfile generation</li>
-                <li><strong>DOCKER_NETWORK</strong> - Network management</li>
-                <li><strong>DOCKER_VOLUME</strong> - Volume management</li>
                 <li><strong>COMPOSE_BUILDER</strong> - docker-compose.yaml generation</li>
-                <li><strong>Unix Socket Support</strong> - Via simple_ipc v2.0 Unix sockets</li>
+                <li><strong>DOCKER_REGISTRY_AUTH</strong> - Private registry authentication</li>
+                <li><strong>EIFFEL_CONTAINER_TEMPLATES</strong> - Eiffel-specific container templates</li>
+                <li><strong>Unix Socket Support</strong> - Via simple_ipc Unix socket support</li>
+            </ul>
+
+            <h3>Implemented P2 Features</h3>
+            <ul>
+                <li><strong>DOCKERFILE_BUILDER</strong> - Fluent Dockerfile generation with multi-stage support</li>
+                <li><strong>DOCKER_NETWORK</strong> - Network management (list, create, connect, disconnect)</li>
+                <li><strong>DOCKER_VOLUME</strong> - Volume management (list, create, remove)</li>
+                <li><strong>Exec Operations</strong> - Execute commands in running containers</li>
             </ul>
         </section>
     </main>
