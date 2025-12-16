@@ -100,7 +100,23 @@ feature -- Initialization
 			l_passed := l_passed + run_test (l_tests, "test_cookbook_image_primary_tag", agent l_tests.test_cookbook_image_primary_tag)
 			l_passed := l_passed + run_test (l_tests, "test_cookbook_error_is_retryable", agent l_tests.test_cookbook_error_is_retryable)
 
-			l_total := 39  -- 29 + 10 cookbook tests
+			-- Log Stream Options tests (P3 - Happy Path)
+			print ("%N=== Log Stream Tests (P3 - Happy Path) ===%N")
+			l_passed := l_passed + run_test (l_tests, "test_log_stream_options_defaults", agent l_tests.test_log_stream_options_defaults)
+			l_passed := l_passed + run_test (l_tests, "test_log_stream_options_fluent_api", agent l_tests.test_log_stream_options_fluent_api)
+			l_passed := l_passed + run_test (l_tests, "test_log_stream_options_to_query_string", agent l_tests.test_log_stream_options_to_query_string)
+			l_passed := l_passed + run_test (l_tests, "test_log_stream_options_no_tail_in_query", agent l_tests.test_log_stream_options_no_tail_in_query)
+			l_passed := l_passed + run_test (l_tests, "test_stream_container_logs_happy_path", agent l_tests.test_stream_container_logs_happy_path)
+
+			-- Log Stream Edge Cases tests (P3)
+			print ("%N=== Log Stream Tests (P3 - Edge Cases) ===%N")
+			l_passed := l_passed + run_test (l_tests, "test_log_stream_options_invalid", agent l_tests.test_log_stream_options_invalid)
+			l_passed := l_passed + run_test (l_tests, "test_stream_logs_nonexistent_container", agent l_tests.test_stream_logs_nonexistent_container)
+			l_passed := l_passed + run_test (l_tests, "test_stream_logs_callback_stops_streaming", agent l_tests.test_stream_logs_callback_stops_streaming)
+			l_passed := l_passed + run_test (l_tests, "test_stream_logs_stopped_container", agent l_tests.test_stream_logs_stopped_container)
+			l_passed := l_passed + run_test (l_tests, "test_stream_logs_timeout_behavior", agent l_tests.test_stream_logs_timeout_behavior)
+
+			l_total := 49  -- 39 + 10 log stream tests
 			l_failed := l_total - l_passed
 
 			print ("%N======================================%N")

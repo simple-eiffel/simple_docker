@@ -434,6 +434,122 @@ feature -- Container Operations
 			end
 		end
 
+	stream_container_logs (a_id: STRING; a_options: LOG_STREAM_OPTIONS;
+			a_callback: FUNCTION [TUPLE [line: STRING; stream_type: INTEGER], BOOLEAN])
+			-- Stream container logs with callback for each log entry.
+			--
+			-- `a_callback' receives (log_line, stream_type) where:
+			--   stream_type: 1 = stdout, 2 = stderr
+			-- Return True from callback to continue streaming, False to stop.
+			--
+			-- Uses Docker's multiplexed stream format (8-byte frame headers).
+			-- Streaming stops when: callback returns False, timeout occurs,
+			-- container stops (if not following), or error occurs.
+			--
+			-- Note: timeout_ms is converted to iteration count (timeout_ms/10ms per iteration).
+		require
+			id_not_void: a_id /= Void
+			id_not_empty: not a_id.is_empty
+			options_not_void: a_options /= Void
+			options_valid: a_options.is_valid
+			callback_not_void: a_callback /= Void
+		local
+			l_path: STRING
+			l_request: STRING
+			l_response: STRING
+			l_continue: BOOLEAN
+			l_read_count: INTEGER
+			l_empty_reads: INTEGER
+			l_max_reads: INTEGER
+			l_max_empty_reads: INTEGER
+			l_env: EXECUTION_ENVIRONMENT
+		do
+			last_error := Void
+			logger.info ("Starting log stream for container: " + a_id)
+			logger.debug_log ("Stream options - stdout: " + a_options.stdout.out +
+				", stderr: " + a_options.stderr.out +
+				", follow: " + a_options.follow.out +
+				", tail: " + a_options.tail.out +
+				", timeout_ms: " + a_options.timeout_ms.out)
+
+			if not connection.is_valid then
+				create last_error.make_connection_error ("Not connected to Docker daemon")
+				logger.error ("Cannot stream logs: not connected to Docker daemon")
+			else
+				-- Build request path with options
+				l_path := "/containers/" + a_id + "/logs?" + a_options.to_query_string
+				logger.debug_log ("Log stream path: " + l_path)
+
+				-- Build and send HTTP request (keep connection open for streaming)
+				l_request := build_streaming_request ("GET", "/v" + api_version + l_path)
+				connection.write_string (l_request)
+
+				-- Read initial response headers
+				l_response := connection.read_string (buffer_size)
+				if l_response.is_empty then
+					create last_error.make_connection_error ("No response from Docker daemon")
+					logger.error ("No response received when starting log stream")
+				elseif parse_status (l_response) >= 400 then
+					create last_error.make_from_response (parse_status (l_response), l_response)
+					logger.error ("Log stream request failed with status: " + parse_status (l_response).out)
+				else
+					-- Process stream with headers stripped
+					logger.debug_log ("Log stream connected, processing stream data")
+					create l_env
+
+					l_continue := True
+					l_max_reads := 10000 -- Safety limit: max iterations
+
+					-- Convert timeout_ms to empty read limit (10ms per empty read)
+					if a_options.timeout_ms > 0 then
+						l_max_empty_reads := a_options.timeout_ms // 10
+					else
+						l_max_empty_reads := l_max_reads -- No timeout
+					end
+
+					-- Process initial response body (after headers)
+					l_continue := process_log_stream_data (l_response, a_callback)
+
+					-- Continue reading if following and callback wants more
+					from
+						l_read_count := 1
+						l_empty_reads := 0
+					until
+						not l_continue or
+						not a_options.follow or
+						l_read_count >= l_max_reads or
+						l_empty_reads >= l_max_empty_reads or
+						has_error
+					loop
+						-- Read next chunk
+						l_response := connection.read_string (buffer_size)
+						if l_response.count > 0 then
+							l_continue := process_log_stream_data (l_response, a_callback)
+							l_read_count := l_read_count + 1
+							l_empty_reads := 0 -- Reset empty read counter on data
+							if l_read_count \\ 100 = 0 then
+								logger.debug_log ("Processed " + l_read_count.out + " stream chunks")
+							end
+						else
+							-- No data available, brief sleep before retry
+							l_empty_reads := l_empty_reads + 1
+							l_env.sleep (10_000_000) -- 10ms
+						end
+					end
+
+					if l_empty_reads >= l_max_empty_reads then
+						logger.info ("Log stream timeout: " + l_empty_reads.out + " empty reads")
+					end
+					if l_read_count >= l_max_reads then
+						logger.warn ("Log stream reached maximum read limit: " + l_max_reads.out)
+					end
+					logger.info ("Log stream ended after " + l_read_count.out + " reads")
+				end
+			end
+		ensure
+			error_logged: has_error implies (attached last_error as e and then not e.message.is_empty)
+		end
+
 	wait_container (a_id: STRING): INTEGER
 			-- Wait for container to exit. Returns exit code.
 		require
@@ -1492,6 +1608,112 @@ feature {NONE} -- Implementation
 			end
 		ensure
 			result_exists: Result /= Void
+		end
+
+	build_streaming_request (a_method, a_path: STRING): STRING
+			-- Build HTTP request for streaming (no Connection header, keep-alive implied).
+		require
+			method_not_empty: not a_method.is_empty
+			path_not_empty: not a_path.is_empty
+		do
+			create Result.make (200)
+			Result.append (a_method)
+			Result.append (" ")
+			Result.append (a_path)
+			Result.append (" HTTP/1.1%R%N")
+			Result.append ("Host: localhost%R%N")
+			Result.append ("Accept: application/octet-stream%R%N")
+			Result.append ("%R%N")
+		ensure
+			result_not_empty: not Result.is_empty
+			has_http_version: Result.has_substring ("HTTP/1.1")
+		end
+
+	process_log_stream_data (a_data: STRING;
+			a_callback: FUNCTION [TUPLE [line: STRING; stream_type: INTEGER], BOOLEAN]): BOOLEAN
+			-- Process Docker multiplexed stream data, calling callback for each log line.
+			-- Returns True to continue streaming, False to stop.
+			--
+			-- Docker stream format (TTY disabled):
+			--   [STREAM_TYPE (1 byte)][0][0][0][SIZE (4 bytes big-endian)][PAYLOAD]
+			--   STREAM_TYPE: 0=stdin, 1=stdout, 2=stderr
+		require
+			data_not_void: a_data /= Void
+			callback_not_void: a_callback /= Void
+		local
+			l_pos: INTEGER
+			l_body_start: INTEGER
+			l_stream_type: INTEGER
+			l_payload_size: INTEGER
+			l_payload: STRING
+			l_data: STRING
+		do
+			Result := True
+			l_data := a_data
+
+			-- Skip HTTP headers if present (initial response)
+			l_body_start := l_data.substring_index ("%R%N%R%N", 1)
+			if l_body_start > 0 then
+				l_data := l_data.substring (l_body_start + 4, l_data.count)
+			end
+
+			-- Process multiplexed stream frames
+			from
+				l_pos := 1
+			until
+				l_pos + 7 > l_data.count or not Result
+			loop
+				-- Read 8-byte header
+				l_stream_type := l_data.item (l_pos).code
+				-- Bytes 2-4 are padding (zeros)
+				-- Bytes 5-8 are size in big-endian
+				l_payload_size := read_big_endian_32 (l_data, l_pos + 4)
+
+				if l_payload_size > 0 and then l_pos + 7 + l_payload_size <= l_data.count then
+					-- Extract payload
+					l_payload := l_data.substring (l_pos + 8, l_pos + 7 + l_payload_size)
+
+					-- Remove trailing CRLF/LF if present
+					if l_payload.count > 0 and then l_payload.item (l_payload.count) = '%N' then
+						l_payload.remove_tail (1)
+						if l_payload.count > 0 and then l_payload.item (l_payload.count) = '%R' then
+							l_payload.remove_tail (1)
+						end
+					end
+
+					-- Call the callback with payload and stream type
+					if l_payload.count > 0 then
+						logger.debug_log ("Log frame: type=" + l_stream_type.out +
+							", size=" + l_payload_size.out +
+							", content=" + l_payload.substring (1, l_payload.count.min (50)))
+						Result := a_callback.item ([l_payload, l_stream_type])
+					end
+
+					l_pos := l_pos + 8 + l_payload_size
+				else
+					-- Incomplete frame or end of data
+					l_pos := l_data.count + 1
+				end
+			end
+		ensure
+			result_is_boolean: Result = True or Result = False
+		end
+
+	read_big_endian_32 (a_data: STRING; a_pos: INTEGER): INTEGER
+			-- Read 4-byte big-endian integer from string at position.
+		require
+			data_not_void: a_data /= Void
+			valid_position: a_pos >= 1 and a_pos + 3 <= a_data.count
+		local
+			b1, b2, b3, b4: INTEGER
+		do
+			b1 := a_data.item (a_pos).code
+			b2 := a_data.item (a_pos + 1).code
+			b3 := a_data.item (a_pos + 2).code
+			b4 := a_data.item (a_pos + 3).code
+			Result := (b1 |<< 24) + (b2 |<< 16) + (b3 |<< 8) + b4
+		ensure
+			non_negative: Result >= 0
 		end
 
 invariant

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>What is Docker? - simple_docker</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" type="image/png" href="images/logo.png">
+</head>
+<body>
+    <header>
+        <div class="logo-container">
+            <img src="images/logo.png" alt="simple_* logo" class="logo">
+        </div>
+        <h1>simple_docker</h1>
+        <p class="tagline">Docker for Beginners</p>
+    </header>
+
+    <nav>
+        <ul>
+            <li><a href="index.html">Overview</a></li>
+            <li><a href="what-is-docker.html" class="active">What is Docker?</a></li>
+            <li><a href="user-guide.html">User Guide</a></li>
+            <li><a href="api-reference.html">API Reference</a></li>
+            <li><a href="cookbook.html">Cookbook</a></li>
+            <li><a href="https://github.com/simple-eiffel/simple_docker">GitHub</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <section id="intro">
+            <h2>What is Docker?</h2>
+            <p>Docker is a tool that packages software into standardized units called <strong>containers</strong>. Think of a container as a lightweight, portable box that contains everything your application needs to run: the code, runtime, libraries, and settings.</p>
+
+            <h3>The Problem Docker Solves</h3>
+            <p>Have you ever experienced:</p>
+            <ul>
+                <li>"It works on my machine, but not on the server"</li>
+                <li>Hours spent installing dependencies before you can run software</li>
+                <li>Conflicts between different versions of libraries</li>
+                <li>Difficulty replicating someone else's development environment</li>
+            </ul>
+            <p>Docker solves these problems by packaging everything together so the software runs identically everywhere.</p>
+        </section>
+
+        <section id="analogy">
+            <h2>A Simple Analogy</h2>
+            <p>Think of Docker like shipping containers used in global trade:</p>
+            <ul>
+                <li><strong>Before containers:</strong> Cargo was loaded loose onto ships. Each ship was loaded differently. Moving cargo between ships, trains, and trucks required repacking.</li>
+                <li><strong>After containers:</strong> All cargo fits in standard-sized boxes. Any ship, train, or truck can carry them. No repacking needed.</li>
+            </ul>
+            <p>Similarly, Docker containers package software in a standard format that runs anywhere Docker is installed.</p>
+        </section>
+
+        <section id="concepts">
+            <h2>Key Concepts</h2>
+
+            <h3>Image</h3>
+            <p>An <strong>image</strong> is a read-only template. It's like a recipe or blueprint. Images are created once and can be shared. Examples:</p>
+            <ul>
+                <li><code>alpine:latest</code> - A minimal Linux distribution (5 MB)</li>
+                <li><code>nginx:alpine</code> - A web server</li>
+                <li><code>postgres:16-alpine</code> - A database server</li>
+            </ul>
+
+            <h3>Container</h3>
+            <p>A <strong>container</strong> is a running instance of an image. Like a class and an object in OOP:</p>
+            <ul>
+                <li>Image = Class (the definition)</li>
+                <li>Container = Object (a running instance)</li>
+            </ul>
+            <p>You can run many containers from the same image.</p>
+
+            <h3>Registry</h3>
+            <p>A <strong>registry</strong> stores images. <a href="https://hub.docker.com">Docker Hub</a> is the public registry with thousands of free images. When you "pull" an image, you download it from a registry.</p>
+        </section>
+
+        <section id="use-cases">
+            <h2>Why Use Docker from Eiffel?</h2>
+            <p>With <strong>simple_docker</strong>, your Eiffel applications can:</p>
+
+            <h3>1. Run Databases Without Installation</h3>
+            <p>Need PostgreSQL? Instead of installing it on your system:</p>
+<pre><code><span class="keyword">create</span> spec.make (<span class="string">"postgres:16-alpine"</span>)
+spec.add_env (<span class="string">"POSTGRES_PASSWORD"</span>, <span class="string">"secret"</span>)
+   .add_port (5432, 5432)
+   .do_nothing
+container := client.run_container (spec)</code></pre>
+            <p>Your database is running in seconds. No installer, no configuration files.</p>
+
+            <h3>2. Run Isolated Tests</h3>
+            <p>Each test gets its own fresh environment:</p>
+<pre><code><span class="comment">-- Start fresh database for each test</span>
+container := client.run_container (spec)
+<span class="comment">-- Run your tests</span>
+run_database_tests
+<span class="comment">-- Clean up completely</span>
+client.remove_container (container.id, True)</code></pre>
+
+            <h3>3. Deploy Consistent Environments</h3>
+            <p>Package your Eiffel application with all its dependencies:</p>
+<pre><code><span class="keyword">create</span> builder.make (<span class="string">"alpine:latest"</span>)
+builder.copy_files (<span class="string">"my_app.exe"</span>, <span class="string">"/app/"</span>)
+       .cmd (&lt;&lt;<span class="string">"/app/my_app.exe"</span>&gt;&gt;)
+       .do_nothing</code></pre>
+
+            <h3>4. Run Third-Party Services</h3>
+            <p>Redis, RabbitMQ, Elasticsearch - run any service without learning its installation:</p>
+<pre><code><span class="comment">-- Need a cache server?</span>
+<span class="keyword">create</span> spec.make (<span class="string">"redis:alpine"</span>)
+spec.add_port (6379, 6379).do_nothing
+client.run_container (spec)</code></pre>
+        </section>
+
+        <section id="minimal-example">
+            <h2>Minimal Complete Example</h2>
+            <p>This example runs a container, captures its output, and cleans up:</p>
+
+<pre><code><span class="keyword">class</span>
+    <span class="type">DOCKER_HELLO_WORLD</span>
+
+<span class="keyword">create</span>
+    make
+
+<span class="keyword">feature</span> {NONE}
+
+    make
+        <span class="keyword">local</span>
+            client: <span class="type">DOCKER_CLIENT</span>
+            spec: <span class="type">CONTAINER_SPEC</span>
+            container: <span class="keyword">detachable</span> <span class="type">DOCKER_CONTAINER</span>
+        <span class="keyword">do</span>
+            <span class="comment">-- Connect to Docker</span>
+            <span class="keyword">create</span> client.make
+
+            <span class="keyword">if</span> client.ping <span class="keyword">then</span>
+                print (<span class="string">"Docker is running!%N"</span>)
+
+                <span class="comment">-- Create a simple container that prints a message</span>
+                <span class="keyword">create</span> spec.make (<span class="string">"alpine:latest"</span>)
+                spec.set_cmd (&lt;&lt;<span class="string">"echo"</span>, <span class="string">"Hello from Docker!"</span>&gt;&gt;).do_nothing
+
+                <span class="comment">-- Run it</span>
+                container := client.run_container (spec)
+
+                <span class="keyword">if</span> <span class="keyword">attached</span> container <span class="keyword">as</span> c <span class="keyword">then</span>
+                    <span class="comment">-- Wait for it to finish</span>
+                    client.wait_container (c.id).do_nothing
+
+                    <span class="comment">-- Get the output</span>
+                    <span class="keyword">if</span> <span class="keyword">attached</span> client.container_logs (c.id, True, False, 100) <span class="keyword">as</span> logs <span class="keyword">then</span>
+                        print (<span class="string">"Container output: "</span> + logs + <span class="string">"%N"</span>)
+                    <span class="keyword">end</span>
+
+                    <span class="comment">-- Clean up</span>
+                    client.remove_container (c.id, True).do_nothing
+                    print (<span class="string">"Container removed%N"</span>)
+                <span class="keyword">end</span>
+            <span class="keyword">else</span>
+                print (<span class="string">"Docker is not running. Please start Docker Desktop.%N"</span>)
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+
+<span class="keyword">end</span></code></pre>
+        </section>
+
+        <section id="next-steps">
+            <h2>Next Steps</h2>
+            <ol>
+                <li><a href="https://www.docker.com/products/docker-desktop/">Install Docker Desktop</a> (free for personal use)</li>
+                <li>Start Docker Desktop and wait for it to say "Docker is running"</li>
+                <li>Read the <a href="user-guide.html">User Guide</a> for installation</li>
+                <li>Try the <a href="cookbook.html">Cookbook recipes</a> for real-world examples</li>
+            </ol>
+        </section>
+
+        <section id="faq">
+            <h2>FAQ</h2>
+
+            <h3>Is Docker a virtual machine?</h3>
+            <p>No. Virtual machines emulate complete computers with their own operating system. Containers share the host's operating system kernel, making them much lighter and faster to start (seconds vs. minutes).</p>
+
+            <h3>Do I need Linux to use Docker?</h3>
+            <p>No. Docker Desktop runs on Windows and macOS. It handles Linux containers seamlessly through a lightweight VM. simple_docker connects via Windows named pipes.</p>
+
+            <h3>Is it safe?</h3>
+            <p>Containers are isolated from your system. They can only access what you explicitly allow (ports, files, etc.). Always use official images from trusted sources.</p>
+
+            <h3>What if I don't have internet?</h3>
+            <p>Images only need to be downloaded once. After that, they're cached locally. You can also export/import images for offline use.</p>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 simple_* ecosystem. MIT License.</p>
+        <p>
+            <a href="https://github.com/simple-eiffel/simple_docker">GitHub</a> |
+            <a href="https://simple-eiffel.github.io">Documentation</a>
+        </p>
+    </footer>
+</body>
+</html>
