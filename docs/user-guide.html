@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Guide - simple_docker</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" type="image/png" href="images/logo.png">
+</head>
+<body>
+    <header>
+        <div class="logo-container">
+            <img src="images/logo.png" alt="simple_* logo" class="logo">
+        </div>
+        <h1>simple_docker</h1>
+        <p class="tagline">User Guide</p>
+    </header>
+
+    <nav>
+        <ul>
+            <li><a href="index.html">Overview</a></li>
+            <li><a href="user-guide.html" class="active">User Guide</a></li>
+            <li><a href="api-reference.html">API Reference</a></li>
+            <li><a href="architecture.html">Architecture</a></li>
+            <li><a href="cookbook.html">Cookbook</a></li>
+            <li><a href="https://github.com/simple-eiffel/simple_docker">GitHub</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <section id="getting-started">
+            <h2>Getting Started</h2>
+
+            <h3>Prerequisites</h3>
+            <ul>
+                <li>EiffelStudio 25.02 or later</li>
+                <li>Docker Desktop running on Windows</li>
+                <li>Docker Engine accessible via named pipe (<code>\\.\pipe\docker_engine</code>)</li>
+            </ul>
+
+            <h3>Installation</h3>
+            <ol>
+                <li>Clone the repository:
+<pre><code>git clone https://github.com/simple-eiffel/simple_docker.git</code></pre>
+                </li>
+                <li>Set environment variables:
+<pre><code># Windows
+set SIMPLE_DOCKER=D:\path\to\simple_docker
+
+# MSYS2/Git Bash
+export SIMPLE_DOCKER=/d/prod/simple_docker</code></pre>
+                </li>
+                <li>Add to your ECF file:
+<pre><code>&lt;library name="simple_docker" location="$SIMPLE_DOCKER/simple_docker.ecf"/&gt;</code></pre>
+                </li>
+            </ol>
+
+            <h3>Dependencies</h3>
+            <p>Ensure these libraries are available:</p>
+            <ul>
+                <li><code>simple_ipc</code> - Named pipe communication</li>
+                <li><code>simple_json</code> - JSON parsing</li>
+                <li><code>simple_file</code> - File operations</li>
+                <li><code>simple_logger</code> - Logging</li>
+            </ul>
+        </section>
+
+        <section id="connecting">
+            <h2>Connecting to Docker</h2>
+
+            <h3>Creating a Client</h3>
+<pre><code><span class="keyword">local</span>
+    client: <span class="type">DOCKER_CLIENT</span>
+<span class="keyword">do</span>
+    <span class="keyword">create</span> client.make
+
+    <span class="comment">-- Check connection</span>
+    <span class="keyword">if</span> client.ping <span class="keyword">then</span>
+        print (<span class="string">"Docker daemon is responsive%N"</span>)
+    <span class="keyword">else</span>
+        print (<span class="string">"Cannot connect to Docker%N"</span>)
+    <span class="keyword">end</span>
+<span class="keyword">end</span></code></pre>
+
+            <h3>Getting Version Information</h3>
+<pre><code><span class="keyword">if</span> <span class="keyword">attached</span> client.version <span class="keyword">as</span> v <span class="keyword">then</span>
+    print (<span class="string">"Docker Version: "</span> + v.to_json + <span class="string">"%N"</span>)
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> <span class="keyword">attached</span> client.info <span class="keyword">as</span> i <span class="keyword">then</span>
+    print (<span class="string">"Docker Info: "</span> + i.to_json + <span class="string">"%N"</span>)
+<span class="keyword">end</span></code></pre>
+        </section>
+
+        <section id="containers">
+            <h2>Working with Containers</h2>
+
+            <h3>Creating a Container Specification</h3>
+            <p>Use the fluent builder API to configure containers:</p>
+<pre><code><span class="keyword">local</span>
+    spec: <span class="type">CONTAINER_SPEC</span>
+<span class="keyword">do</span>
+    <span class="keyword">create</span> spec.make (<span class="string">"alpine:latest"</span>)
+    spec.set_name (<span class="string">"my-container"</span>)
+        .set_hostname (<span class="string">"myhost"</span>)
+        .set_cmd (&lt;&lt;<span class="string">"echo"</span>, <span class="string">"Hello!"</span>&gt;&gt;)
+        .add_env (<span class="string">"DEBUG"</span>, <span class="string">"true"</span>)
+        .add_env (<span class="string">"APP_NAME"</span>, <span class="string">"myapp"</span>).do_nothing
+<span class="keyword">end</span></code></pre>
+
+            <h3>Port Mapping</h3>
+<pre><code>spec.add_port (80, 8080)        <span class="comment">-- Map container:80 to host:8080</span>
+    .add_port (443, 8443)       <span class="comment">-- Map container:443 to host:8443</span>
+    .add_port_udp (53, 5353)    <span class="comment">-- UDP port mapping</span>
+    .do_nothing</code></pre>
+
+            <h3>Volume Mounts</h3>
+<pre><code>spec.add_volume (<span class="string">"/host/data"</span>, <span class="string">"/container/data"</span>)
+    .add_volume_readonly (<span class="string">"/host/config"</span>, <span class="string">"/etc/config"</span>)
+    .do_nothing</code></pre>
+
+            <h3>Resource Limits</h3>
+<pre><code>spec.set_memory_limit (512 * 1024 * 1024)  <span class="comment">-- 512 MB</span>
+    .set_cpu_shares (1024)
+    .do_nothing</code></pre>
+
+            <h3>Restart Policies</h3>
+<pre><code>spec.set_restart_policy (<span class="string">"no"</span>)             <span class="comment">-- Never restart</span>
+spec.set_restart_policy (<span class="string">"always"</span>)         <span class="comment">-- Always restart</span>
+spec.set_restart_policy (<span class="string">"on-failure"</span>)     <span class="comment">-- Restart on failure</span>
+spec.set_restart_policy (<span class="string">"unless-stopped"</span>) <span class="comment">-- Restart unless stopped</span></code></pre>
+
+            <h3>Running Containers</h3>
+<pre><code><span class="keyword">local</span>
+    container: <span class="keyword">detachable</span> <span class="type">DOCKER_CONTAINER</span>
+<span class="keyword">do</span>
+    <span class="comment">-- Create and start in one step</span>
+    container := client.run_container (spec)
+
+    <span class="comment">-- Or create then start separately</span>
+    container := client.create_container (spec)
+    <span class="keyword">if</span> <span class="keyword">attached</span> container <span class="keyword">as</span> c <span class="keyword">then</span>
+        client.start_container (c.id).do_nothing
+    <span class="keyword">end</span>
+<span class="keyword">end</span></code></pre>
+
+            <h3>Container Lifecycle</h3>
+<pre><code><span class="comment">-- Stop with timeout (seconds)</span>
+client.stop_container (container.id, 10).do_nothing
+
+<span class="comment">-- Pause/unpause</span>
+client.pause_container (container.id).do_nothing
+client.unpause_container (container.id).do_nothing
+
+<span class="comment">-- Restart</span>
+client.restart_container (container.id, 10).do_nothing
+
+<span class="comment">-- Kill (force stop)</span>
+client.kill_container (container.id).do_nothing
+
+<span class="comment">-- Remove (force removes running containers)</span>
+client.remove_container (container.id, True).do_nothing</code></pre>
+
+            <h3>Getting Logs</h3>
+<pre><code><span class="keyword">if</span> <span class="keyword">attached</span> client.container_logs (container.id, True, True, 100) <span class="keyword">as</span> logs <span class="keyword">then</span>
+    <span class="comment">-- True, True = stdout, stderr</span>
+    <span class="comment">-- 100 = last 100 lines</span>
+    print (logs)
+<span class="keyword">end</span></code></pre>
+
+            <h3>Waiting for Exit</h3>
+<pre><code><span class="keyword">local</span>
+    exit_code: <span class="type">INTEGER</span>
+<span class="keyword">do</span>
+    exit_code := client.wait_container (container.id)
+    print (<span class="string">"Container exited with code: "</span> + exit_code.out + <span class="string">"%N"</span>)
+<span class="keyword">end</span></code></pre>
+        </section>
+
+        <section id="images">
+            <h2>Working with Images</h2>
+
+            <h3>Listing Images</h3>
+<pre><code><span class="keyword">across</span> client.list_images <span class="keyword">as</span> img <span class="keyword">loop</span>
+    print (img.out + <span class="string">"%N"</span>)
+    <span class="comment">-- Shows: short_id (tags) size_mb MB</span>
+<span class="keyword">end</span></code></pre>
+
+            <h3>Checking Image Existence</h3>
+<pre><code><span class="keyword">if</span> client.image_exists (<span class="string">"alpine:latest"</span>) <span class="keyword">then</span>
+    print (<span class="string">"Alpine image is available%N"</span>)
+<span class="keyword">end</span></code></pre>
+
+            <h3>Pulling Images</h3>
+<pre><code><span class="keyword">if</span> client.pull_image (<span class="string">"nginx:alpine"</span>) <span class="keyword">then</span>
+    print (<span class="string">"Image pulled successfully%N"</span>)
+<span class="keyword">else</span>
+    print (<span class="string">"Failed to pull image%N"</span>)
+<span class="keyword">end</span></code></pre>
+
+            <h3>Removing Images</h3>
+<pre><code><span class="comment">-- Remove image (force=False means won't remove if in use)</span>
+client.remove_image (<span class="string">"old-image:v1"</span>, False).do_nothing
+
+<span class="comment">-- Force remove</span>
+client.remove_image (<span class="string">"old-image:v1"</span>, True).do_nothing</code></pre>
+        </section>
+
+        <section id="error-handling">
+            <h2>Error Handling</h2>
+
+            <h3>Checking for Errors</h3>
+<pre><code>container := client.create_container (spec)
+
+<span class="keyword">if</span> client.has_error <span class="keyword">then</span>
+    <span class="keyword">if</span> <span class="keyword">attached</span> client.last_error <span class="keyword">as</span> err <span class="keyword">then</span>
+        print (<span class="string">"Error: "</span> + err.out + <span class="string">"%N"</span>)
+    <span class="keyword">end</span>
+<span class="keyword">end</span></code></pre>
+
+            <h3>Error Types</h3>
+<pre><code><span class="keyword">if</span> <span class="keyword">attached</span> client.last_error <span class="keyword">as</span> err <span class="keyword">then</span>
+    <span class="keyword">if</span> err.is_connection_error <span class="keyword">then</span>
+        <span class="comment">-- Cannot connect to Docker daemon</span>
+    <span class="keyword">elseif</span> err.is_timeout_error <span class="keyword">then</span>
+        <span class="comment">-- Operation timed out</span>
+    <span class="keyword">elseif</span> err.is_not_found <span class="keyword">then</span>
+        <span class="comment">-- Container/image not found (404)</span>
+    <span class="keyword">elseif</span> err.is_conflict <span class="keyword">then</span>
+        <span class="comment">-- Name already in use (409)</span>
+    <span class="keyword">elseif</span> err.is_server_error <span class="keyword">then</span>
+        <span class="comment">-- Docker daemon error (5xx)</span>
+    <span class="keyword">end</span>
+
+    <span class="keyword">if</span> err.is_retryable <span class="keyword">then</span>
+        <span class="comment">-- Connection/timeout errors can be retried</span>
+    <span class="keyword">end</span>
+<span class="keyword">end</span></code></pre>
+
+            <h3>Common Error Recovery Patterns</h3>
+<pre><code><span class="comment">-- Auto-pull missing images</span>
+container := client.create_container (spec)
+<span class="keyword">if</span> client.has_error <span class="keyword">and then</span>
+   <span class="keyword">attached</span> client.last_error <span class="keyword">as</span> err <span class="keyword">and then</span>
+   err.is_not_found <span class="keyword">then</span>
+    <span class="keyword">if</span> client.pull_image (spec.image) <span class="keyword">then</span>
+        container := client.create_container (spec)
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+
+<span class="comment">-- Handle name conflicts</span>
+<span class="keyword">if</span> client.has_error <span class="keyword">and then</span>
+   <span class="keyword">attached</span> client.last_error <span class="keyword">as</span> err <span class="keyword">and then</span>
+   err.is_conflict <span class="keyword">then</span>
+    <span class="comment">-- Remove existing container and retry</span>
+    client.remove_container (spec.name, True).do_nothing
+    container := client.create_container (spec)
+<span class="keyword">end</span></code></pre>
+        </section>
+
+        <section id="container-state">
+            <h2>Container State</h2>
+
+            <h3>Querying State</h3>
+<pre><code><span class="keyword">if</span> container.is_running <span class="keyword">then</span>
+    print (<span class="string">"Container is running%N"</span>)
+<span class="keyword">elseif</span> container.is_paused <span class="keyword">then</span>
+    print (<span class="string">"Container is paused%N"</span>)
+<span class="keyword">elseif</span> container.is_exited <span class="keyword">then</span>
+    print (<span class="string">"Container has exited%N"</span>)
+    print (<span class="string">"Exit code: "</span> + container.exit_code.out + <span class="string">"%N"</span>)
+<span class="keyword">elseif</span> container.is_dead <span class="keyword">then</span>
+    print (<span class="string">"Container is dead%N"</span>)
+<span class="keyword">end</span></code></pre>
+
+            <h3>Checking Available Operations</h3>
+<pre><code><span class="keyword">if</span> container.can_start <span class="keyword">then</span>
+    client.start_container (container.id).do_nothing
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> container.can_stop <span class="keyword">then</span>
+    client.stop_container (container.id, 10).do_nothing
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> container.has_exited_successfully <span class="keyword">then</span>
+    print (<span class="string">"Container completed successfully%N"</span>)
+<span class="keyword">end</span></code></pre>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 simple_* ecosystem. MIT License.</p>
+        <p>
+            <a href="https://github.com/simple-eiffel/simple_docker">GitHub</a> |
+            <a href="https://simple-eiffel.github.io">Documentation</a>
+        </p>
+    </footer>
+</body>
+</html>

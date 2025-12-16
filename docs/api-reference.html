@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Reference - simple_docker</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" type="image/png" href="images/logo.png">
+</head>
+<body>
+    <header>
+        <div class="logo-container">
+            <img src="images/logo.png" alt="simple_* logo" class="logo">
+        </div>
+        <h1>simple_docker</h1>
+        <p class="tagline">API Reference</p>
+    </header>
+
+    <nav>
+        <ul>
+            <li><a href="index.html">Overview</a></li>
+            <li><a href="user-guide.html">User Guide</a></li>
+            <li><a href="api-reference.html" class="active">API Reference</a></li>
+            <li><a href="architecture.html">Architecture</a></li>
+            <li><a href="cookbook.html">Cookbook</a></li>
+            <li><a href="https://github.com/simple-eiffel/simple_docker">GitHub</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <section id="docker-client">
+            <h2>DOCKER_CLIENT</h2>
+            <p>Main facade for all Docker operations. Communicates with Docker Engine via named pipes.</p>
+
+            <div class="api-section">
+                <h3>Creation</h3>
+                <div class="signature">make</div>
+                <p>Create client and connect to Docker daemon.</p>
+                <div class="contracts">
+                    <h4>Postconditions</h4>
+                    <div class="ensure">connection_attempted: True</div>
+                </div>
+            </div>
+
+            <div class="api-section">
+                <h3>Connection Queries</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Return Type</th><th>Description</th></tr>
+                    <tr><td><code>ping</code></td><td>BOOLEAN</td><td>Check if Docker daemon is responsive</td></tr>
+                    <tr><td><code>version</code></td><td>SIMPLE_JSON_OBJECT</td><td>Get Docker version information</td></tr>
+                    <tr><td><code>info</code></td><td>SIMPLE_JSON_OBJECT</td><td>Get Docker system information</td></tr>
+                    <tr><td><code>is_connected</code></td><td>BOOLEAN</td><td>Is client connected to daemon?</td></tr>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>Container Operations</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Parameters</th><th>Return</th><th>Description</th></tr>
+                    <tr>
+                        <td><code>list_containers</code></td>
+                        <td>a_all: BOOLEAN</td>
+                        <td>ARRAYED_LIST [DOCKER_CONTAINER]</td>
+                        <td>List containers. If a_all is True, includes stopped containers.</td>
+                    </tr>
+                    <tr>
+                        <td><code>get_container</code></td>
+                        <td>a_id: STRING</td>
+                        <td>DOCKER_CONTAINER</td>
+                        <td>Get container by ID or name.</td>
+                    </tr>
+                    <tr>
+                        <td><code>create_container</code></td>
+                        <td>a_spec: CONTAINER_SPEC</td>
+                        <td>DOCKER_CONTAINER</td>
+                        <td>Create container from specification.</td>
+                    </tr>
+                    <tr>
+                        <td><code>run_container</code></td>
+                        <td>a_spec: CONTAINER_SPEC</td>
+                        <td>DOCKER_CONTAINER</td>
+                        <td>Create and start container.</td>
+                    </tr>
+                    <tr>
+                        <td><code>start_container</code></td>
+                        <td>a_id: STRING</td>
+                        <td>BOOLEAN</td>
+                        <td>Start a stopped container.</td>
+                    </tr>
+                    <tr>
+                        <td><code>stop_container</code></td>
+                        <td>a_id: STRING; a_timeout: INTEGER</td>
+                        <td>BOOLEAN</td>
+                        <td>Stop container with timeout in seconds.</td>
+                    </tr>
+                    <tr>
+                        <td><code>restart_container</code></td>
+                        <td>a_id: STRING; a_timeout: INTEGER</td>
+                        <td>BOOLEAN</td>
+                        <td>Restart container.</td>
+                    </tr>
+                    <tr>
+                        <td><code>pause_container</code></td>
+                        <td>a_id: STRING</td>
+                        <td>BOOLEAN</td>
+                        <td>Pause container.</td>
+                    </tr>
+                    <tr>
+                        <td><code>unpause_container</code></td>
+                        <td>a_id: STRING</td>
+                        <td>BOOLEAN</td>
+                        <td>Unpause container.</td>
+                    </tr>
+                    <tr>
+                        <td><code>kill_container</code></td>
+                        <td>a_id: STRING</td>
+                        <td>BOOLEAN</td>
+                        <td>Kill container (SIGKILL).</td>
+                    </tr>
+                    <tr>
+                        <td><code>remove_container</code></td>
+                        <td>a_id: STRING; a_force: BOOLEAN</td>
+                        <td>BOOLEAN</td>
+                        <td>Remove container. Force removes running containers.</td>
+                    </tr>
+                    <tr>
+                        <td><code>container_logs</code></td>
+                        <td>a_id: STRING; a_stdout, a_stderr: BOOLEAN; a_tail: INTEGER</td>
+                        <td>STRING</td>
+                        <td>Get container logs. Tail specifies line count.</td>
+                    </tr>
+                    <tr>
+                        <td><code>wait_container</code></td>
+                        <td>a_id: STRING</td>
+                        <td>INTEGER</td>
+                        <td>Wait for container to exit. Returns exit code.</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>Image Operations</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Parameters</th><th>Return</th><th>Description</th></tr>
+                    <tr>
+                        <td><code>list_images</code></td>
+                        <td>-</td>
+                        <td>ARRAYED_LIST [DOCKER_IMAGE]</td>
+                        <td>List all local images.</td>
+                    </tr>
+                    <tr>
+                        <td><code>get_image</code></td>
+                        <td>a_name: STRING</td>
+                        <td>DOCKER_IMAGE</td>
+                        <td>Get image by name or ID.</td>
+                    </tr>
+                    <tr>
+                        <td><code>image_exists</code></td>
+                        <td>a_name: STRING</td>
+                        <td>BOOLEAN</td>
+                        <td>Check if image exists locally.</td>
+                    </tr>
+                    <tr>
+                        <td><code>pull_image</code></td>
+                        <td>a_name: STRING</td>
+                        <td>BOOLEAN</td>
+                        <td>Pull image from registry.</td>
+                    </tr>
+                    <tr>
+                        <td><code>remove_image</code></td>
+                        <td>a_name: STRING; a_force: BOOLEAN</td>
+                        <td>BOOLEAN</td>
+                        <td>Remove image. Force removes even if in use.</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>Error Handling</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Return Type</th><th>Description</th></tr>
+                    <tr><td><code>has_error</code></td><td>BOOLEAN</td><td>Did last operation fail?</td></tr>
+                    <tr><td><code>last_error</code></td><td>DOCKER_ERROR</td><td>Error from last operation (if any).</td></tr>
+                </table>
+            </div>
+        </section>
+
+        <section id="container-spec">
+            <h2>CONTAINER_SPEC</h2>
+            <p>Fluent builder for container configuration. All setters return Current for chaining.</p>
+
+            <div class="api-section">
+                <h3>Creation</h3>
+                <div class="signature">make (a_image: STRING)</div>
+                <p>Create specification for given image.</p>
+                <div class="contracts">
+                    <h4>Preconditions</h4>
+                    <div class="require">image_not_empty: not a_image.is_empty</div>
+                    <h4>Postconditions</h4>
+                    <div class="ensure">image_set: image.same_string (a_image)</div>
+                </div>
+            </div>
+
+            <div class="api-section">
+                <h3>Basic Configuration</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Parameter</th><th>Description</th></tr>
+                    <tr><td><code>set_name</code></td><td>a_name: STRING</td><td>Container name (must be unique)</td></tr>
+                    <tr><td><code>set_hostname</code></td><td>a_hostname: STRING</td><td>Container hostname</td></tr>
+                    <tr><td><code>set_working_dir</code></td><td>a_dir: STRING</td><td>Working directory inside container</td></tr>
+                    <tr><td><code>set_user</code></td><td>a_user: STRING</td><td>User to run as (user or user:group)</td></tr>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>Command Configuration</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Parameter</th><th>Description</th></tr>
+                    <tr><td><code>set_cmd</code></td><td>a_cmd: ARRAY [STRING]</td><td>Command to run</td></tr>
+                    <tr><td><code>set_entrypoint</code></td><td>a_entrypoint: ARRAY [STRING]</td><td>Container entrypoint</td></tr>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>Environment</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Parameters</th><th>Description</th></tr>
+                    <tr><td><code>add_env</code></td><td>a_key, a_value: STRING</td><td>Add environment variable</td></tr>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>Port Mapping</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Parameters</th><th>Description</th></tr>
+                    <tr><td><code>add_port</code></td><td>a_container, a_host: INTEGER</td><td>Map TCP port</td></tr>
+                    <tr><td><code>add_port_udp</code></td><td>a_container, a_host: INTEGER</td><td>Map UDP port</td></tr>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>Volume Mounts</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Parameters</th><th>Description</th></tr>
+                    <tr><td><code>add_volume</code></td><td>a_host, a_container: STRING</td><td>Mount volume read-write</td></tr>
+                    <tr><td><code>add_volume_readonly</code></td><td>a_host, a_container: STRING</td><td>Mount volume read-only</td></tr>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>Resource Limits</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Parameter</th><th>Description</th></tr>
+                    <tr><td><code>set_memory_limit</code></td><td>a_bytes: INTEGER_64</td><td>Memory limit in bytes</td></tr>
+                    <tr><td><code>set_cpu_shares</code></td><td>a_shares: INTEGER</td><td>CPU shares (relative weight)</td></tr>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>Policies</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Parameter</th><th>Values</th></tr>
+                    <tr><td><code>set_restart_policy</code></td><td>a_policy: STRING</td><td>no, always, on-failure, unless-stopped</td></tr>
+                    <tr><td><code>set_network_mode</code></td><td>a_mode: STRING</td><td>bridge, host, none, container:name</td></tr>
+                    <tr><td><code>set_auto_remove</code></td><td>a_auto: BOOLEAN</td><td>Remove container on exit</td></tr>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>Terminal</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Parameter</th><th>Description</th></tr>
+                    <tr><td><code>set_tty</code></td><td>a_tty: BOOLEAN</td><td>Allocate pseudo-TTY</td></tr>
+                    <tr><td><code>set_stdin_open</code></td><td>a_open: BOOLEAN</td><td>Keep STDIN open</td></tr>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>Labels</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Parameters</th><th>Description</th></tr>
+                    <tr><td><code>add_label</code></td><td>a_key, a_value: STRING</td><td>Add metadata label</td></tr>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>Export</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Return</th><th>Description</th></tr>
+                    <tr><td><code>to_json</code></td><td>SIMPLE_JSON_OBJECT</td><td>Export as JSON for Docker API</td></tr>
+                </table>
+            </div>
+        </section>
+
+        <section id="docker-container">
+            <h2>DOCKER_CONTAINER</h2>
+            <p>Container representation with state and metadata.</p>
+
+            <div class="api-section">
+                <h3>Identification</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Type</th><th>Description</th></tr>
+                    <tr><td><code>id</code></td><td>STRING</td><td>Full container ID (64 hex chars)</td></tr>
+                    <tr><td><code>short_id</code></td><td>STRING</td><td>Short ID (12 chars)</td></tr>
+                    <tr><td><code>name</code></td><td>STRING</td><td>Container name (without leading /)</td></tr>
+                    <tr><td><code>names</code></td><td>ARRAYED_LIST [STRING]</td><td>All container names</td></tr>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>Image Information</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Type</th><th>Description</th></tr>
+                    <tr><td><code>image</code></td><td>STRING</td><td>Image name</td></tr>
+                    <tr><td><code>image_id</code></td><td>STRING</td><td>Image ID</td></tr>
+                    <tr><td><code>command</code></td><td>STRING</td><td>Command being run</td></tr>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>State Queries</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Type</th><th>Description</th></tr>
+                    <tr><td><code>state</code></td><td>STRING</td><td>Current state string</td></tr>
+                    <tr><td><code>status</code></td><td>STRING</td><td>Human-readable status</td></tr>
+                    <tr><td><code>is_running</code></td><td>BOOLEAN</td><td>Is container running?</td></tr>
+                    <tr><td><code>is_paused</code></td><td>BOOLEAN</td><td>Is container paused?</td></tr>
+                    <tr><td><code>is_exited</code></td><td>BOOLEAN</td><td>Has container exited?</td></tr>
+                    <tr><td><code>is_dead</code></td><td>BOOLEAN</td><td>Is container dead?</td></tr>
+                    <tr><td><code>exit_code</code></td><td>INTEGER</td><td>Exit code (if exited)</td></tr>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>Transition Queries</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Type</th><th>Description</th></tr>
+                    <tr><td><code>can_start</code></td><td>BOOLEAN</td><td>Can container be started?</td></tr>
+                    <tr><td><code>can_stop</code></td><td>BOOLEAN</td><td>Can container be stopped?</td></tr>
+                    <tr><td><code>has_exited_successfully</code></td><td>BOOLEAN</td><td>Exited with code 0?</td></tr>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>Network</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Type</th><th>Description</th></tr>
+                    <tr><td><code>ip_address</code></td><td>STRING</td><td>Container IP address</td></tr>
+                    <tr><td><code>ports</code></td><td>ARRAYED_LIST [TUPLE]</td><td>Port mappings</td></tr>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>Metadata</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Type</th><th>Description</th></tr>
+                    <tr><td><code>created_timestamp</code></td><td>INTEGER_64</td><td>Unix timestamp of creation</td></tr>
+                    <tr><td><code>labels</code></td><td>ARRAYED_LIST [TUPLE]</td><td>Container labels</td></tr>
+                </table>
+            </div>
+        </section>
+
+        <section id="docker-image">
+            <h2>DOCKER_IMAGE</h2>
+            <p>Image representation with tags and metadata.</p>
+
+            <div class="api-section">
+                <h3>Identification</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Type</th><th>Description</th></tr>
+                    <tr><td><code>id</code></td><td>STRING</td><td>Full image ID</td></tr>
+                    <tr><td><code>short_id</code></td><td>STRING</td><td>Short ID (12 chars)</td></tr>
+                    <tr><td><code>repo_tags</code></td><td>ARRAYED_LIST [STRING]</td><td>Repository tags</td></tr>
+                    <tr><td><code>repo_digests</code></td><td>ARRAYED_LIST [STRING]</td><td>Repository digests</td></tr>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>Tag Queries</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Type</th><th>Description</th></tr>
+                    <tr><td><code>primary_tag</code></td><td>STRING</td><td>First tag or "&lt;none&gt;"</td></tr>
+                    <tr><td><code>repository</code></td><td>STRING</td><td>Repository name from primary tag</td></tr>
+                    <tr><td><code>tag</code></td><td>STRING</td><td>Tag from primary tag</td></tr>
+                    <tr><td><code>has_tag (a_tag)</code></td><td>BOOLEAN</td><td>Does image have this tag?</td></tr>
+                    <tr><td><code>matches (a_ref)</code></td><td>BOOLEAN</td><td>Match by name, tag, or ID</td></tr>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>Size</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Type</th><th>Description</th></tr>
+                    <tr><td><code>size</code></td><td>INTEGER_64</td><td>Image size in bytes</td></tr>
+                    <tr><td><code>virtual_size</code></td><td>INTEGER_64</td><td>Virtual size in bytes</td></tr>
+                    <tr><td><code>size_mb</code></td><td>REAL_64</td><td>Size in megabytes</td></tr>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>Metadata</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Type</th><th>Description</th></tr>
+                    <tr><td><code>created_timestamp</code></td><td>INTEGER_64</td><td>Unix timestamp of creation</td></tr>
+                    <tr><td><code>containers</code></td><td>INTEGER</td><td>Number of containers using image</td></tr>
+                    <tr><td><code>labels</code></td><td>ARRAYED_LIST [TUPLE]</td><td>Image labels</td></tr>
+                </table>
+            </div>
+        </section>
+
+        <section id="docker-error">
+            <h2>DOCKER_ERROR</h2>
+            <p>Error representation with classification.</p>
+
+            <div class="api-section">
+                <h3>Error Information</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Type</th><th>Description</th></tr>
+                    <tr><td><code>message</code></td><td>STRING</td><td>Error message</td></tr>
+                    <tr><td><code>status_code</code></td><td>INTEGER</td><td>HTTP status code</td></tr>
+                    <tr><td><code>error_type</code></td><td>INTEGER</td><td>Error type constant</td></tr>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>Error Type Queries</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Description</th></tr>
+                    <tr><td><code>is_connection_error</code></td><td>Cannot connect to Docker daemon</td></tr>
+                    <tr><td><code>is_timeout_error</code></td><td>Operation timed out</td></tr>
+                    <tr><td><code>is_not_found</code></td><td>Resource not found (404)</td></tr>
+                    <tr><td><code>is_conflict</code></td><td>Conflict error (409)</td></tr>
+                    <tr><td><code>is_server_error</code></td><td>Docker daemon error (5xx)</td></tr>
+                    <tr><td><code>is_client_error</code></td><td>Client error (4xx)</td></tr>
+                    <tr><td><code>is_retryable</code></td><td>Can operation be retried?</td></tr>
+                </table>
+            </div>
+        </section>
+
+        <section id="container-state">
+            <h2>CONTAINER_STATE</h2>
+            <p>State constants and transition queries.</p>
+
+            <div class="api-section">
+                <h3>State Constants</h3>
+                <table class="api-table">
+                    <tr><th>Constant</th><th>Value</th></tr>
+                    <tr><td><code>created</code></td><td>"created"</td></tr>
+                    <tr><td><code>running</code></td><td>"running"</td></tr>
+                    <tr><td><code>paused</code></td><td>"paused"</td></tr>
+                    <tr><td><code>restarting</code></td><td>"restarting"</td></tr>
+                    <tr><td><code>removing</code></td><td>"removing"</td></tr>
+                    <tr><td><code>exited</code></td><td>"exited"</td></tr>
+                    <tr><td><code>dead</code></td><td>"dead"</td></tr>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>State Queries</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Description</th></tr>
+                    <tr><td><code>is_valid_state (s)</code></td><td>Is s a valid state?</td></tr>
+                    <tr><td><code>is_running_state (s)</code></td><td>Is s running or paused?</td></tr>
+                    <tr><td><code>is_stopped_state (s)</code></td><td>Is s exited or dead?</td></tr>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>Transition Queries</h3>
+                <table class="api-table">
+                    <tr><th>Feature</th><th>Description</th></tr>
+                    <tr><td><code>can_start (s)</code></td><td>Can container in state s be started?</td></tr>
+                    <tr><td><code>can_stop (s)</code></td><td>Can container in state s be stopped?</td></tr>
+                    <tr><td><code>can_pause (s)</code></td><td>Can container in state s be paused?</td></tr>
+                    <tr><td><code>can_remove (s)</code></td><td>Can container in state s be removed?</td></tr>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 simple_* ecosystem. MIT License.</p>
+        <p>
+            <a href="https://github.com/simple-eiffel/simple_docker">GitHub</a> |
+            <a href="https://simple-eiffel.github.io">Documentation</a>
+        </p>
+    </footer>
+</body>
+</html>

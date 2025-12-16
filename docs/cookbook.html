@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cookbook - simple_docker</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" type="image/png" href="images/logo.png">
+</head>
+<body>
+    <header>
+        <div class="logo-container">
+            <img src="images/logo.png" alt="simple_* logo" class="logo">
+        </div>
+        <h1>simple_docker</h1>
+        <p class="tagline">Cookbook</p>
+    </header>
+
+    <nav>
+        <ul>
+            <li><a href="index.html">Overview</a></li>
+            <li><a href="user-guide.html">User Guide</a></li>
+            <li><a href="api-reference.html">API Reference</a></li>
+            <li><a href="architecture.html">Architecture</a></li>
+            <li><a href="cookbook.html" class="active">Cookbook</a></li>
+            <li><a href="https://github.com/simple-eiffel/simple_docker">GitHub</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <section id="intro">
+            <h2>Cookbook Recipes</h2>
+            <p>Real-world examples and patterns for Docker container management in Eiffel.</p>
+        </section>
+
+        <section id="web-server" class="recipe">
+            <h2>Recipe 1: Run a Web Server</h2>
+            <p>Deploy an Nginx web server with port mapping and volume mounts.</p>
+
+<pre><code><span class="keyword">class</span>
+    <span class="type">WEB_SERVER_EXAMPLE</span>
+
+<span class="keyword">create</span>
+    make
+
+<span class="keyword">feature</span> {NONE}
+
+    make
+        <span class="keyword">local</span>
+            client: <span class="type">DOCKER_CLIENT</span>
+            spec: <span class="type">CONTAINER_SPEC</span>
+            container: <span class="keyword">detachable</span> <span class="type">DOCKER_CONTAINER</span>
+        <span class="keyword">do</span>
+            <span class="keyword">create</span> client.make
+
+            <span class="keyword">if</span> client.ping <span class="keyword">then</span>
+                <span class="comment">-- Ensure image exists</span>
+                <span class="keyword">if</span> <span class="keyword">not</span> client.image_exists (<span class="string">"nginx:alpine"</span>) <span class="keyword">then</span>
+                    print (<span class="string">"Pulling nginx:alpine...%N"</span>)
+                    client.pull_image (<span class="string">"nginx:alpine"</span>).do_nothing
+                <span class="keyword">end</span>
+
+                <span class="comment">-- Configure container</span>
+                <span class="keyword">create</span> spec.make (<span class="string">"nginx:alpine"</span>)
+                spec.set_name (<span class="string">"my-web-server"</span>)
+                    .add_port (80, 8080)
+                    .add_volume (<span class="string">"C:\www"</span>, <span class="string">"/usr/share/nginx/html"</span>)
+                    .set_restart_policy (<span class="string">"unless-stopped"</span>)
+                    .do_nothing
+
+                <span class="comment">-- Run container</span>
+                container := client.run_container (spec)
+
+                <span class="keyword">if</span> <span class="keyword">attached</span> container <span class="keyword">as</span> c <span class="keyword">then</span>
+                    print (<span class="string">"Web server running at http://localhost:8080%N"</span>)
+                    print (<span class="string">"Container ID: "</span> + c.short_id + <span class="string">"%N"</span>)
+                <span class="keyword">else</span>
+                    <span class="keyword">if</span> <span class="keyword">attached</span> client.last_error <span class="keyword">as</span> err <span class="keyword">then</span>
+                        print (<span class="string">"Failed: "</span> + err.message + <span class="string">"%N"</span>)
+                    <span class="keyword">end</span>
+                <span class="keyword">end</span>
+            <span class="keyword">else</span>
+                print (<span class="string">"Docker is not running%N"</span>)
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+
+<span class="keyword">end</span></code></pre>
+        </section>
+
+        <section id="database" class="recipe">
+            <h2>Recipe 2: Database Container</h2>
+            <p>Run PostgreSQL with environment variables and persistent storage.</p>
+
+<pre><code><span class="keyword">class</span>
+    <span class="type">DATABASE_EXAMPLE</span>
+
+<span class="keyword">feature</span>
+
+    start_postgres (a_password: STRING; a_data_dir: STRING)
+        <span class="keyword">local</span>
+            spec: <span class="type">CONTAINER_SPEC</span>
+        <span class="keyword">do</span>
+            <span class="keyword">create</span> spec.make (<span class="string">"postgres:16-alpine"</span>)
+            spec.set_name (<span class="string">"my-postgres"</span>)
+                .set_hostname (<span class="string">"postgres"</span>)
+                .add_port (5432, 5432)
+                .add_env (<span class="string">"POSTGRES_PASSWORD"</span>, a_password)
+                .add_env (<span class="string">"POSTGRES_USER"</span>, <span class="string">"myapp"</span>)
+                .add_env (<span class="string">"POSTGRES_DB"</span>, <span class="string">"myapp_db"</span>)
+                .add_volume (a_data_dir, <span class="string">"/var/lib/postgresql/data"</span>)
+                .set_restart_policy (<span class="string">"unless-stopped"</span>)
+                .set_memory_limit (1024 * 1024 * 1024)  <span class="comment">-- 1 GB</span>
+                .do_nothing
+
+            postgres := client.run_container (spec)
+
+            <span class="keyword">if</span> <span class="keyword">attached</span> postgres <span class="keyword">as</span> pg <span class="keyword">then</span>
+                print (<span class="string">"PostgreSQL running on port 5432%N"</span>)
+                print (<span class="string">"Connection: postgresql://myapp:***@localhost:5432/myapp_db%N"</span>)
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+
+    stop_postgres
+        <span class="keyword">do</span>
+            <span class="keyword">if</span> <span class="keyword">attached</span> postgres <span class="keyword">as</span> pg <span class="keyword">then</span>
+                client.stop_container (pg.id, 30).do_nothing
+                print (<span class="string">"PostgreSQL stopped%N"</span>)
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+
+<span class="keyword">feature</span> {NONE}
+
+    client: <span class="type">DOCKER_CLIENT</span>
+    postgres: <span class="keyword">detachable</span> <span class="type">DOCKER_CONTAINER</span>
+
+<span class="keyword">end</span></code></pre>
+        </section>
+
+        <section id="batch-job" class="recipe">
+            <h2>Recipe 3: Batch Job Container</h2>
+            <p>Run a one-time container, wait for completion, and capture output.</p>
+
+<pre><code><span class="keyword">class</span>
+    <span class="type">BATCH_JOB_EXAMPLE</span>
+
+<span class="keyword">feature</span>
+
+    run_batch_job (a_script: STRING): STRING
+            <span class="comment">-- Run script in container and return output</span>
+        <span class="keyword">local</span>
+            spec: <span class="type">CONTAINER_SPEC</span>
+            container: <span class="keyword">detachable</span> <span class="type">DOCKER_CONTAINER</span>
+            exit_code: INTEGER
+        <span class="keyword">do</span>
+            Result := <span class="string">""</span>
+
+            <span class="keyword">create</span> spec.make (<span class="string">"alpine:latest"</span>)
+            spec.set_name (<span class="string">"batch-job-"</span> + generate_id)
+                .set_cmd (&lt;&lt;<span class="string">"/bin/sh"</span>, <span class="string">"-c"</span>, a_script&gt;&gt;)
+                .set_auto_remove (True)  <span class="comment">-- Auto-cleanup</span>
+                .do_nothing
+
+            container := client.run_container (spec)
+
+            <span class="keyword">if</span> <span class="keyword">attached</span> container <span class="keyword">as</span> c <span class="keyword">then</span>
+                <span class="comment">-- Wait for completion</span>
+                exit_code := client.wait_container (c.id)
+
+                <span class="comment">-- Get output before container is removed</span>
+                <span class="keyword">if</span> <span class="keyword">attached</span> client.container_logs (c.id, True, True, 1000) <span class="keyword">as</span> logs <span class="keyword">then</span>
+                    Result := logs
+                <span class="keyword">end</span>
+
+                <span class="keyword">if</span> exit_code /= 0 <span class="keyword">then</span>
+                    Result.prepend (<span class="string">"[ERROR: exit code "</span> + exit_code.out + <span class="string">"]%N"</span>)
+                <span class="keyword">end</span>
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+
+    generate_id: STRING
+        <span class="keyword">do</span>
+            Result := (<span class="keyword">create</span> {<span class="type">SIMPLE_UUID</span>}.make).short_string
+        <span class="keyword">end</span>
+
+<span class="keyword">feature</span> {NONE}
+
+    client: <span class="type">DOCKER_CLIENT</span>
+
+<span class="keyword">end</span></code></pre>
+
+            <h3>Usage</h3>
+<pre><code><span class="keyword">local</span>
+    job: <span class="type">BATCH_JOB_EXAMPLE</span>
+    output: STRING
+<span class="keyword">do</span>
+    <span class="keyword">create</span> job
+    output := job.run_batch_job (<span class="string">"echo 'Hello' && date && ls -la"</span>)
+    print (output)
+<span class="keyword">end</span></code></pre>
+        </section>
+
+        <section id="container-manager" class="recipe">
+            <h2>Recipe 4: Container Manager</h2>
+            <p>Manage multiple containers with cleanup on exit.</p>
+
+<pre><code><span class="keyword">class</span>
+    <span class="type">CONTAINER_MANAGER</span>
+
+<span class="keyword">create</span>
+    make
+
+<span class="keyword">feature</span> {NONE}
+
+    make
+        <span class="keyword">do</span>
+            <span class="keyword">create</span> client.make
+            <span class="keyword">create</span> managed_containers.make (10)
+        <span class="keyword">end</span>
+
+<span class="keyword">feature</span>
+
+    start (a_spec: <span class="type">CONTAINER_SPEC</span>): <span class="keyword">detachable</span> <span class="type">DOCKER_CONTAINER</span>
+            <span class="comment">-- Start container and track for cleanup</span>
+        <span class="keyword">do</span>
+            Result := client.run_container (a_spec)
+            <span class="keyword">if</span> <span class="keyword">attached</span> Result <span class="keyword">as</span> c <span class="keyword">then</span>
+                managed_containers.extend (c.id)
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+
+    stop_all
+            <span class="comment">-- Stop all managed containers</span>
+        <span class="keyword">do</span>
+            <span class="keyword">across</span> managed_containers <span class="keyword">as</span> id <span class="keyword">loop</span>
+                client.stop_container (id, 10).do_nothing
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+
+    cleanup
+            <span class="comment">-- Stop and remove all managed containers</span>
+        <span class="keyword">do</span>
+            <span class="keyword">across</span> managed_containers <span class="keyword">as</span> id <span class="keyword">loop</span>
+                client.remove_container (id, True).do_nothing
+            <span class="keyword">end</span>
+            managed_containers.wipe_out
+        <span class="keyword">end</span>
+
+    status
+            <span class="comment">-- Print status of all managed containers</span>
+        <span class="keyword">do</span>
+            <span class="keyword">across</span> managed_containers <span class="keyword">as</span> id <span class="keyword">loop</span>
+                <span class="keyword">if</span> <span class="keyword">attached</span> client.get_container (id) <span class="keyword">as</span> c <span class="keyword">then</span>
+                    print (c.out + <span class="string">"%N"</span>)
+                <span class="keyword">end</span>
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+
+<span class="keyword">feature</span> {NONE}
+
+    client: <span class="type">DOCKER_CLIENT</span>
+    managed_containers: <span class="type">ARRAYED_LIST</span> [STRING]
+
+<span class="keyword">end</span></code></pre>
+        </section>
+
+        <section id="health-check" class="recipe">
+            <h2>Recipe 5: Container Health Monitoring</h2>
+            <p>Monitor container health and auto-restart on failure.</p>
+
+<pre><code><span class="keyword">class</span>
+    <span class="type">CONTAINER_MONITOR</span>
+
+<span class="keyword">feature</span>
+
+    monitor (a_container_id: STRING; a_check_interval_ms: INTEGER)
+            <span class="comment">-- Monitor container and restart if stopped</span>
+        <span class="keyword">local</span>
+            l_running: BOOLEAN
+        <span class="keyword">do</span>
+            <span class="keyword">from</span>
+                l_running := True
+            <span class="keyword">until</span>
+                <span class="keyword">not</span> l_running
+            <span class="keyword">loop</span>
+                <span class="keyword">if</span> <span class="keyword">attached</span> client.get_container (a_container_id) <span class="keyword">as</span> c <span class="keyword">then</span>
+                    <span class="keyword">if</span> c.is_running <span class="keyword">then</span>
+                        <span class="comment">-- All good</span>
+                    <span class="keyword">elseif</span> c.is_exited <span class="keyword">then</span>
+                        <span class="keyword">if</span> c.has_exited_successfully <span class="keyword">then</span>
+                            print (<span class="string">"Container completed successfully%N"</span>)
+                            l_running := False
+                        <span class="keyword">else</span>
+                            print (<span class="string">"Container failed (exit "</span> + c.exit_code.out + <span class="string">"), restarting...%N"</span>)
+                            client.start_container (a_container_id).do_nothing
+                        <span class="keyword">end</span>
+                    <span class="keyword">elseif</span> c.is_dead <span class="keyword">then</span>
+                        print (<span class="string">"Container is dead, cannot recover%N"</span>)
+                        l_running := False
+                    <span class="keyword">end</span>
+                <span class="keyword">else</span>
+                    print (<span class="string">"Container not found%N"</span>)
+                    l_running := False
+                <span class="keyword">end</span>
+
+                <span class="keyword">if</span> l_running <span class="keyword">then</span>
+                    sleep (a_check_interval_ms)
+                <span class="keyword">end</span>
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+
+<span class="keyword">feature</span> {NONE}
+
+    client: <span class="type">DOCKER_CLIENT</span>
+
+    sleep (ms: INTEGER)
+        <span class="keyword">do</span>
+            (<span class="keyword">create</span> {<span class="type">EXECUTION_ENVIRONMENT</span>}).sleep (ms * 1_000_000)
+        <span class="keyword">end</span>
+
+<span class="keyword">end</span></code></pre>
+        </section>
+
+        <section id="cleanup-old" class="recipe">
+            <h2>Recipe 6: Cleanup Old Containers and Images</h2>
+            <p>Remove stopped containers and unused images.</p>
+
+<pre><code><span class="keyword">class</span>
+    <span class="type">DOCKER_CLEANUP</span>
+
+<span class="keyword">feature</span>
+
+    cleanup_stopped_containers
+            <span class="comment">-- Remove all stopped containers</span>
+        <span class="keyword">local</span>
+            removed_count: INTEGER
+        <span class="keyword">do</span>
+            <span class="keyword">across</span> client.list_containers (True) <span class="keyword">as</span> c <span class="keyword">loop</span>
+                <span class="keyword">if</span> c.is_exited <span class="keyword">or</span> c.is_dead <span class="keyword">then</span>
+                    <span class="keyword">if</span> client.remove_container (c.id, False) <span class="keyword">then</span>
+                        print (<span class="string">"Removed: "</span> + c.short_id + <span class="string">"%N"</span>)
+                        removed_count := removed_count + 1
+                    <span class="keyword">end</span>
+                <span class="keyword">end</span>
+            <span class="keyword">end</span>
+            print (<span class="string">"Removed "</span> + removed_count.out + <span class="string">" containers%N"</span>)
+        <span class="keyword">end</span>
+
+    cleanup_dangling_images
+            <span class="comment">-- Remove images without tags</span>
+        <span class="keyword">local</span>
+            removed_count: INTEGER
+        <span class="keyword">do</span>
+            <span class="keyword">across</span> client.list_images <span class="keyword">as</span> img <span class="keyword">loop</span>
+                <span class="keyword">if</span> img.primary_tag.same_string (<span class="string">"&lt;none&gt;:&lt;none&gt;"</span>) <span class="keyword">then</span>
+                    <span class="keyword">if</span> client.remove_image (img.id, False) <span class="keyword">then</span>
+                        print (<span class="string">"Removed image: "</span> + img.short_id + <span class="string">"%N"</span>)
+                        removed_count := removed_count + 1
+                    <span class="keyword">end</span>
+                <span class="keyword">end</span>
+            <span class="keyword">end</span>
+            print (<span class="string">"Removed "</span> + removed_count.out + <span class="string">" images%N"</span>)
+        <span class="keyword">end</span>
+
+    full_cleanup
+            <span class="comment">-- Clean containers first, then images</span>
+        <span class="keyword">do</span>
+            cleanup_stopped_containers
+            cleanup_dangling_images
+        <span class="keyword">end</span>
+
+<span class="keyword">feature</span> {NONE}
+
+    client: <span class="type">DOCKER_CLIENT</span>
+
+<span class="keyword">end</span></code></pre>
+        </section>
+
+        <section id="retry-pattern" class="recipe">
+            <h2>Recipe 7: Retry Pattern for Unreliable Operations</h2>
+            <p>Retry operations with exponential backoff.</p>
+
+<pre><code><span class="keyword">class</span>
+    <span class="type">DOCKER_RETRY</span>
+
+<span class="keyword">feature</span>
+
+    pull_with_retry (a_image: STRING; a_max_attempts: INTEGER): BOOLEAN
+            <span class="comment">-- Pull image with retries on network errors</span>
+        <span class="keyword">local</span>
+            attempt: INTEGER
+            delay_ms: INTEGER
+        <span class="keyword">do</span>
+            <span class="keyword">from</span>
+                attempt := 1
+                delay_ms := 1000  <span class="comment">-- Start with 1 second</span>
+            <span class="keyword">until</span>
+                Result <span class="keyword">or</span> attempt > a_max_attempts
+            <span class="keyword">loop</span>
+                print (<span class="string">"Pulling "</span> + a_image + <span class="string">" (attempt "</span> + attempt.out + <span class="string">")...%N"</span>)
+
+                <span class="keyword">if</span> client.pull_image (a_image) <span class="keyword">then</span>
+                    Result := True
+                    print (<span class="string">"Success!%N"</span>)
+                <span class="keyword">else</span>
+                    <span class="keyword">if</span> <span class="keyword">attached</span> client.last_error <span class="keyword">as</span> err <span class="keyword">then</span>
+                        <span class="keyword">if</span> err.is_retryable <span class="keyword">and</span> attempt < a_max_attempts <span class="keyword">then</span>
+                            print (<span class="string">"Retrying in "</span> + (delay_ms // 1000).out + <span class="string">" seconds...%N"</span>)
+                            sleep (delay_ms)
+                            delay_ms := delay_ms * 2  <span class="comment">-- Exponential backoff</span>
+                        <span class="keyword">else</span>
+                            print (<span class="string">"Failed: "</span> + err.message + <span class="string">"%N"</span>)
+                        <span class="keyword">end</span>
+                    <span class="keyword">end</span>
+                <span class="keyword">end</span>
+
+                attempt := attempt + 1
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+
+<span class="keyword">feature</span> {NONE}
+
+    client: <span class="type">DOCKER_CLIENT</span>
+
+    sleep (ms: INTEGER)
+        <span class="keyword">do</span>
+            (<span class="keyword">create</span> {<span class="type">EXECUTION_ENVIRONMENT</span>}).sleep (ms * 1_000_000)
+        <span class="keyword">end</span>
+
+<span class="keyword">end</span></code></pre>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 simple_* ecosystem. MIT License.</p>
+        <p>
+            <a href="https://github.com/simple-eiffel/simple_docker">GitHub</a> |
+            <a href="https://simple-eiffel.github.io">Documentation</a>
+        </p>
+    </footer>
+</body>
+</html>

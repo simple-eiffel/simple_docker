@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>simple_docker - Docker Container Management for Eiffel</title>
     <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" type="image/png" href="images/logo.png">
 </head>
 <body>
     <header>
@@ -21,11 +22,11 @@
 
     <nav>
         <ul>
-            <li><a href="#overview">Overview</a></li>
-            <li><a href="#quick-start">Quick Start</a></li>
-            <li><a href="#features">Features</a></li>
-            <li><a href="#api">API Reference</a></li>
-            <li><a href="#examples">Examples</a></li>
+            <li><a href="index.html" class="active">Overview</a></li>
+            <li><a href="user-guide.html">User Guide</a></li>
+            <li><a href="api-reference.html">API Reference</a></li>
+            <li><a href="architecture.html">Architecture</a></li>
+            <li><a href="cookbook.html">Cookbook</a></li>
             <li><a href="https://github.com/simple-eiffel/simple_docker">GitHub</a></li>
         </ul>
     </nav>
@@ -113,248 +114,14 @@
             </div>
         </section>
 
-        <section id="api">
-            <h2>API Reference</h2>
-
-            <div class="api-section">
-                <h3>DOCKER_CLIENT</h3>
-                <p>Main facade for all Docker operations.</p>
-                <table class="api-table">
-                    <tr>
-                        <th>Feature</th>
-                        <th>Description</th>
-                    </tr>
-                    <tr>
-                        <td><code>ping</code></td>
-                        <td>Check if Docker daemon is responsive</td>
-                    </tr>
-                    <tr>
-                        <td><code>version</code></td>
-                        <td>Get Docker version information</td>
-                    </tr>
-                    <tr>
-                        <td><code>info</code></td>
-                        <td>Get Docker system information</td>
-                    </tr>
-                    <tr>
-                        <td><code>list_containers (all)</code></td>
-                        <td>List containers (optionally include stopped)</td>
-                    </tr>
-                    <tr>
-                        <td><code>create_container (spec)</code></td>
-                        <td>Create container from specification</td>
-                    </tr>
-                    <tr>
-                        <td><code>run_container (spec)</code></td>
-                        <td>Create and start container</td>
-                    </tr>
-                    <tr>
-                        <td><code>start_container (id)</code></td>
-                        <td>Start a stopped container</td>
-                    </tr>
-                    <tr>
-                        <td><code>stop_container (id, timeout)</code></td>
-                        <td>Stop container with timeout</td>
-                    </tr>
-                    <tr>
-                        <td><code>remove_container (id, force)</code></td>
-                        <td>Remove container</td>
-                    </tr>
-                    <tr>
-                        <td><code>container_logs (id, stdout, stderr, tail)</code></td>
-                        <td>Get container logs</td>
-                    </tr>
-                    <tr>
-                        <td><code>wait_container (id)</code></td>
-                        <td>Wait for container to exit</td>
-                    </tr>
-                    <tr>
-                        <td><code>list_images</code></td>
-                        <td>List all images</td>
-                    </tr>
-                    <tr>
-                        <td><code>pull_image (name)</code></td>
-                        <td>Pull image from registry</td>
-                    </tr>
-                </table>
-            </div>
-
-            <div class="api-section">
-                <h3>CONTAINER_SPEC</h3>
-                <p>Fluent builder for container configuration.</p>
-                <table class="api-table">
-                    <tr>
-                        <th>Feature</th>
-                        <th>Description</th>
-                    </tr>
-                    <tr>
-                        <td><code>set_name (name)</code></td>
-                        <td>Set container name</td>
-                    </tr>
-                    <tr>
-                        <td><code>set_hostname (hostname)</code></td>
-                        <td>Set container hostname</td>
-                    </tr>
-                    <tr>
-                        <td><code>set_cmd (args)</code></td>
-                        <td>Set command to run</td>
-                    </tr>
-                    <tr>
-                        <td><code>add_port (container, host)</code></td>
-                        <td>Map TCP port</td>
-                    </tr>
-                    <tr>
-                        <td><code>add_env (key, value)</code></td>
-                        <td>Add environment variable</td>
-                    </tr>
-                    <tr>
-                        <td><code>add_volume (host, container)</code></td>
-                        <td>Mount volume</td>
-                    </tr>
-                    <tr>
-                        <td><code>set_memory_limit (bytes)</code></td>
-                        <td>Set memory limit</td>
-                    </tr>
-                    <tr>
-                        <td><code>set_restart_policy (policy)</code></td>
-                        <td>Set restart policy</td>
-                    </tr>
-                    <tr>
-                        <td><code>to_json</code></td>
-                        <td>Export as JSON for Docker API</td>
-                    </tr>
-                </table>
-            </div>
-
-            <div class="api-section">
-                <h3>DOCKER_CONTAINER</h3>
-                <p>Container representation with state queries.</p>
-                <table class="api-table">
-                    <tr>
-                        <th>Feature</th>
-                        <th>Description</th>
-                    </tr>
-                    <tr>
-                        <td><code>id / short_id</code></td>
-                        <td>Container ID (full/short)</td>
-                    </tr>
-                    <tr>
-                        <td><code>name</code></td>
-                        <td>Container name</td>
-                    </tr>
-                    <tr>
-                        <td><code>is_running</code></td>
-                        <td>Check if container is running</td>
-                    </tr>
-                    <tr>
-                        <td><code>is_exited</code></td>
-                        <td>Check if container has exited</td>
-                    </tr>
-                    <tr>
-                        <td><code>can_start</code></td>
-                        <td>Can container be started?</td>
-                    </tr>
-                    <tr>
-                        <td><code>exit_code</code></td>
-                        <td>Exit code (if exited)</td>
-                    </tr>
-                    <tr>
-                        <td><code>has_exited_successfully</code></td>
-                        <td>Did container exit with code 0?</td>
-                    </tr>
-                </table>
-            </div>
-
-            <div class="api-section">
-                <h3>DOCKER_IMAGE</h3>
-                <p>Image representation with metadata.</p>
-                <table class="api-table">
-                    <tr>
-                        <th>Feature</th>
-                        <th>Description</th>
-                    </tr>
-                    <tr>
-                        <td><code>id / short_id</code></td>
-                        <td>Image ID (full/short)</td>
-                    </tr>
-                    <tr>
-                        <td><code>repo_tags</code></td>
-                        <td>List of repository tags</td>
-                    </tr>
-                    <tr>
-                        <td><code>size / size_mb</code></td>
-                        <td>Image size in bytes/MB</td>
-                    </tr>
-                    <tr>
-                        <td><code>has_tag (tag)</code></td>
-                        <td>Check for specific tag</td>
-                    </tr>
-                    <tr>
-                        <td><code>matches (ref)</code></td>
-                        <td>Match by name or ID</td>
-                    </tr>
-                </table>
-            </div>
-        </section>
-
-        <section id="examples">
-            <h2>Examples</h2>
-
-            <h3>Web Server Container</h3>
-<pre><code><span class="keyword">create</span> spec.make (<span class="string">"nginx:alpine"</span>)
-spec.set_name (<span class="string">"web-server"</span>)
-    .add_port (80, 8080)
-    .add_volume (<span class="string">"/var/www"</span>, <span class="string">"/usr/share/nginx/html"</span>)
-    .set_restart_policy (<span class="string">"unless-stopped"</span>).do_nothing
-
-container := client.run_container (spec)</code></pre>
-
-            <h3>Container State Queries</h3>
-<pre><code><span class="keyword">if</span> container.is_running <span class="keyword">then</span>
-    print (<span class="string">"Container is running%N"</span>)
-<span class="keyword">elseif</span> container.is_exited <span class="keyword">then</span>
-    <span class="keyword">if</span> container.has_exited_successfully <span class="keyword">then</span>
-        print (<span class="string">"Exited with code 0%N"</span>)
-    <span class="keyword">else</span>
-        print (<span class="string">"Exited with code: "</span> + container.exit_code.out + <span class="string">"%N"</span>)
-    <span class="keyword">end</span>
-<span class="keyword">end</span>
-
-<span class="comment">-- Check what operations are allowed</span>
-<span class="keyword">if</span> container.can_start <span class="keyword">then</span>
-    client.start_container (container.id).do_nothing
-<span class="keyword">end</span></code></pre>
-
-            <h3>Error Handling</h3>
-<pre><code>container := client.create_container (spec)
-
-<span class="keyword">if</span> client.has_error <span class="keyword">then</span>
-    <span class="keyword">if</span> <span class="keyword">attached</span> client.last_error <span class="keyword">as</span> err <span class="keyword">then</span>
-        <span class="keyword">if</span> err.is_not_found <span class="keyword">then</span>
-            <span class="comment">-- Image not found, pull it</span>
-            client.pull_image (spec.image).do_nothing
-        <span class="keyword">elseif</span> err.is_conflict <span class="keyword">then</span>
-            <span class="comment">-- Container name exists</span>
-        <span class="keyword">elseif</span> err.is_retryable <span class="keyword">then</span>
-            <span class="comment">-- Network error, can retry</span>
-        <span class="keyword">end</span>
-    <span class="keyword">end</span>
-<span class="keyword">end</span></code></pre>
-
-            <h3>Listing and Filtering</h3>
-<pre><code><span class="comment">-- List running containers</span>
-<span class="keyword">across</span> client.list_containers (False) <span class="keyword">as</span> c <span class="keyword">loop</span>
-    <span class="keyword">if</span> c.is_running <span class="keyword">then</span>
-        print (c.name + <span class="string">" is running%N"</span>)
-    <span class="keyword">end</span>
-<span class="keyword">end</span>
-
-<span class="comment">-- Find image by tag</span>
-<span class="keyword">across</span> client.list_images <span class="keyword">as</span> img <span class="keyword">loop</span>
-    <span class="keyword">if</span> img.has_tag (<span class="string">"alpine"</span>) <span class="keyword">then</span>
-        print (<span class="string">"Found alpine: "</span> + img.short_id + <span class="string">"%N"</span>)
-    <span class="keyword">end</span>
-<span class="keyword">end</span></code></pre>
+        <section id="documentation">
+            <h2>Documentation</h2>
+            <ul class="doc-links">
+                <li><a href="user-guide.html"><strong>User Guide</strong></a> - Getting started and tutorials</li>
+                <li><a href="api-reference.html"><strong>API Reference</strong></a> - Complete feature documentation</li>
+                <li><a href="architecture.html"><strong>Architecture</strong></a> - Internal design and rationale</li>
+                <li><a href="cookbook.html"><strong>Cookbook</strong></a> - Real-world recipes and patterns</li>
+            </ul>
         </section>
 
         <section id="dependencies">

@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Architecture - simple_docker</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" type="image/png" href="images/logo.png">
+</head>
+<body>
+    <header>
+        <div class="logo-container">
+            <img src="images/logo.png" alt="simple_* logo" class="logo">
+        </div>
+        <h1>simple_docker</h1>
+        <p class="tagline">Architecture</p>
+    </header>
+
+    <nav>
+        <ul>
+            <li><a href="index.html">Overview</a></li>
+            <li><a href="user-guide.html">User Guide</a></li>
+            <li><a href="api-reference.html">API Reference</a></li>
+            <li><a href="architecture.html" class="active">Architecture</a></li>
+            <li><a href="cookbook.html">Cookbook</a></li>
+            <li><a href="https://github.com/simple-eiffel/simple_docker">GitHub</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <section id="overview">
+            <h2>Architecture Overview</h2>
+            <p>
+                simple_docker is designed as a facade layer over the Docker Engine API. It communicates
+                with Docker via Windows named pipes, sending HTTP/1.1 requests and parsing JSON responses.
+            </p>
+
+            <h3>Class Hierarchy</h3>
+<pre><code>DOCKER_CLIENT (facade)
+    |
+    +-- CONTAINER_SPEC (builder)
+    |
+    +-- DOCKER_CONTAINER (model)
+    |
+    +-- DOCKER_IMAGE (model)
+    |
+    +-- DOCKER_ERROR (error handling)
+    |
+    +-- CONTAINER_STATE (constants)</code></pre>
+
+            <h3>Design Patterns</h3>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h4>Facade Pattern</h4>
+                    <p>DOCKER_CLIENT provides a simple interface to complex Docker API operations.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Builder Pattern</h4>
+                    <p>CONTAINER_SPEC uses fluent interface for container configuration.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Value Objects</h4>
+                    <p>DOCKER_CONTAINER and DOCKER_IMAGE are immutable representations.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="communication">
+            <h2>Docker Communication</h2>
+
+            <h3>Transport Layer</h3>
+            <p>
+                On Windows, Docker Engine exposes its API via a named pipe at
+                <code>\\.\pipe\docker_engine</code>. We use simple_ipc to communicate with this pipe.
+            </p>
+
+<pre><code><span class="comment">-- Connection via simple_ipc</span>
+<span class="keyword">create</span> connection.make_client (<span class="string">"docker_engine"</span>)
+
+<span class="comment">-- All API calls are HTTP/1.1 over the pipe</span>
+connection.write_string (<span class="string">"GET /v1.45/version HTTP/1.1%R%NHost: localhost%R%N%R%N"</span>)
+response := connection.read_string (buffer_size)</code></pre>
+
+            <h3>API Version</h3>
+            <p>
+                We target Docker Engine API v1.45 (Docker 24.0+). The version is included in all
+                request paths: <code>/v1.45/containers/json</code>.
+            </p>
+
+            <h3>Request/Response Flow</h3>
+<pre><code>1. Client calls DOCKER_CLIENT.list_containers (True)
+
+2. DOCKER_CLIENT builds HTTP request:
+   GET /v1.45/containers/json?all=true HTTP/1.1
+   Host: localhost
+
+3. Request sent via named pipe (SIMPLE_IPC)
+
+4. Docker responds with HTTP/1.1 + chunked body:
+   HTTP/1.1 200 OK
+   Content-Type: application/json
+   Transfer-Encoding: chunked
+
+   [{"Id":"abc123...","Names":["/my-container"],...}]
+
+5. Response parsed, DOCKER_CONTAINER objects created
+
+6. Result returned to caller</code></pre>
+        </section>
+
+        <section id="chunked-transfer">
+            <h2>Chunked Transfer Encoding</h2>
+            <p>
+                Docker uses HTTP/1.1 chunked transfer encoding for responses. This requires special
+                handling since the response body may arrive in multiple reads.
+            </p>
+
+            <h3>Challenge</h3>
+            <p>
+                Named pipes are stream-based. A single <code>read_string</code> call may return:
+            </p>
+            <ul>
+                <li>Only the HTTP headers (body in next read)</li>
+                <li>Headers + partial body</li>
+                <li>Complete response</li>
+            </ul>
+
+            <h3>Solution</h3>
+<pre><code><span class="comment">-- Keep reading until we get the terminating chunk</span>
+<span class="keyword">from</span>
+    l_read_more := <span class="keyword">not</span> l_response.has_substring (<span class="string">"%R%N0%R%N"</span>)
+<span class="keyword">until</span>
+    <span class="keyword">not</span> l_read_more <span class="keyword">or</span> l_max_reads <= 0
+<span class="keyword">loop</span>
+    l_chunk := connection.read_string (buffer_size)
+    <span class="keyword">if</span> l_chunk.count > 0 <span class="keyword">then</span>
+        l_response.append (l_chunk)
+        l_read_more := <span class="keyword">not</span> l_response.has_substring (<span class="string">"%R%N0%R%N"</span>)
+    <span class="keyword">else</span>
+        l_read_more := False
+    <span class="keyword">end</span>
+    l_max_reads := l_max_reads - 1
+<span class="keyword">end</span></code></pre>
+
+            <h3>Chunk Decoding</h3>
+<pre><code><span class="comment">-- Chunked body format:</span>
+<span class="comment">-- size_in_hex\r\n</span>
+<span class="comment">-- data\r\n</span>
+<span class="comment">-- size_in_hex\r\n</span>
+<span class="comment">-- data\r\n</span>
+<span class="comment">-- 0\r\n</span>
+<span class="comment">-- \r\n</span>
+
+decode_chunked_body (a_chunked: STRING): STRING
+    <span class="keyword">local</span>
+        l_pos, l_chunk_size: INTEGER
+        l_size_str: STRING
+    <span class="keyword">do</span>
+        <span class="keyword">create</span> Result.make (a_chunked.count)
+        <span class="keyword">from</span> l_pos := 1 <span class="keyword">until</span> l_pos > a_chunked.count <span class="keyword">loop</span>
+            <span class="comment">-- Read chunk size (hex)</span>
+            l_size_str := read_until_crlf (a_chunked, l_pos)
+            l_chunk_size := hex_to_integer (l_size_str)
+
+            <span class="keyword">if</span> l_chunk_size = 0 <span class="keyword">then</span>
+                <span class="comment">-- End of chunks</span>
+                l_pos := a_chunked.count + 1
+            <span class="keyword">else</span>
+                <span class="comment">-- Append chunk data</span>
+                Result.append (a_chunked.substring (l_pos, l_pos + l_chunk_size - 1))
+                l_pos := l_pos + l_chunk_size + 2  <span class="comment">-- Skip \r\n</span>
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+    <span class="keyword">end</span></code></pre>
+        </section>
+
+        <section id="dbc">
+            <h2>Design by Contract</h2>
+            <p>
+                All classes use full Design by Contract with preconditions, postconditions, and invariants.
+            </p>
+
+            <h3>CONTAINER_SPEC Contracts</h3>
+<pre><code>set_name (a_name: STRING): <span class="keyword">like</span> Current
+    <span class="keyword">require</span>
+        name_not_void: a_name /= Void
+        name_not_empty: <span class="keyword">not</span> a_name.is_empty
+    <span class="keyword">do</span>
+        name := a_name
+        Result := Current
+    <span class="keyword">ensure</span>
+        name_set: name.same_string (a_name)
+        result_is_current: Result = Current
+    <span class="keyword">end</span></code></pre>
+
+            <h3>DOCKER_CONTAINER Invariants</h3>
+<pre><code><span class="keyword">invariant</span>
+    id_exists: id /= Void
+    short_id_exists: short_id /= Void
+    short_id_length_valid: short_id.count <= 12
+    short_id_consistency: (<span class="keyword">not</span> id.is_empty <span class="keyword">and</span> id.count >= short_id.count)
+        <span class="keyword">implies</span> id.starts_with (short_id)
+    names_exists: names /= Void
+    labels_exists: labels /= Void
+    ports_exists: ports /= Void</code></pre>
+
+            <h3>CONTAINER_STATE Postconditions</h3>
+<pre><code>can_start (a_state: STRING): BOOLEAN
+    <span class="keyword">require</span>
+        state_not_void: a_state /= Void
+        state_not_empty: <span class="keyword">not</span> a_state.is_empty
+    <span class="keyword">do</span>
+        Result := a_state.same_string (created) <span class="keyword">or else</span> a_state.same_string (exited)
+    <span class="keyword">ensure</span>
+        created_can_start: a_state.same_string (created) <span class="keyword">implies</span> Result
+        running_cannot_start: a_state.same_string (running) <span class="keyword">implies not</span> Result
+        paused_cannot_start: a_state.same_string (paused) <span class="keyword">implies not</span> Result
+    <span class="keyword">end</span></code></pre>
+        </section>
+
+        <section id="error-handling">
+            <h2>Error Handling</h2>
+            <p>
+                Errors are captured in DOCKER_ERROR objects rather than exceptions. This allows
+                callers to handle errors gracefully.
+            </p>
+
+            <h3>Error Flow</h3>
+<pre><code>1. Operation fails (connection error, 404, 409, etc.)
+
+2. DOCKER_CLIENT sets:
+   - has_error := True
+   - last_error := create {DOCKER_ERROR}.make_from_status (...)
+
+3. Caller checks:
+   <span class="keyword">if</span> client.has_error <span class="keyword">then</span>
+       <span class="keyword">if</span> <span class="keyword">attached</span> client.last_error <span class="keyword">as</span> err <span class="keyword">then</span>
+           <span class="comment">-- Handle based on error type</span>
+       <span class="keyword">end</span>
+   <span class="keyword">end</span>
+
+4. Next successful operation clears error state</code></pre>
+
+            <h3>Error Classification</h3>
+            <table class="api-table">
+                <tr><th>Type</th><th>HTTP Status</th><th>Retryable?</th></tr>
+                <tr><td>Connection Error</td><td>N/A</td><td>Yes</td></tr>
+                <tr><td>Timeout Error</td><td>N/A</td><td>Yes</td></tr>
+                <tr><td>Not Found</td><td>404</td><td>No</td></tr>
+                <tr><td>Conflict</td><td>409</td><td>No</td></tr>
+                <tr><td>Client Error</td><td>4xx</td><td>No</td></tr>
+                <tr><td>Server Error</td><td>5xx</td><td>Maybe</td></tr>
+            </table>
+        </section>
+
+        <section id="logging">
+            <h2>Logging</h2>
+            <p>
+                simple_docker uses simple_logger for structured logging. Log levels:
+            </p>
+            <ul>
+                <li><strong>DEBUG</strong> - Request/response details, parsing info</li>
+                <li><strong>INFO</strong> - Container operations, image pulls</li>
+                <li><strong>WARNING</strong> - Recoverable issues</li>
+                <li><strong>ERROR</strong> - Operation failures</li>
+            </ul>
+
+            <h3>Enabling Debug Logging</h3>
+<pre><code><span class="keyword">local</span>
+    logger: <span class="type">SIMPLE_LOGGER</span>
+<span class="keyword">do</span>
+    <span class="keyword">create</span> logger.make (<span class="string">"docker"</span>)
+    logger.set_level_debug
+
+    <span class="comment">-- Now all requests/responses are logged</span>
+<span class="keyword">end</span></code></pre>
+        </section>
+
+        <section id="dependencies">
+            <h2>Dependencies</h2>
+
+            <h3>Dependency Graph</h3>
+<pre><code>simple_docker
+    |
+    +-- simple_ipc      (named pipe communication)
+    |
+    +-- simple_json     (JSON parsing/building)
+    |
+    +-- simple_file     (file operations)
+    |
+    +-- simple_logger   (logging)
+    |
+    +-- EiffelBase      (core Eiffel library)</code></pre>
+
+            <h3>Why These Dependencies?</h3>
+            <table class="api-table">
+                <tr><th>Library</th><th>Purpose</th></tr>
+                <tr><td>simple_ipc</td><td>Cross-platform IPC. Named pipes on Windows, Unix sockets on Linux.</td></tr>
+                <tr><td>simple_json</td><td>Parse Docker API responses, build request bodies.</td></tr>
+                <tr><td>simple_file</td><td>File operations for volume mounts, config files.</td></tr>
+                <tr><td>simple_logger</td><td>Structured logging for debugging and monitoring.</td></tr>
+            </table>
+        </section>
+
+        <section id="future">
+            <h2>Future Architecture</h2>
+
+            <h3>Planned Additions</h3>
+            <ul>
+                <li><strong>DOCKERFILE_BUILDER</strong> - Fluent Dockerfile generation</li>
+                <li><strong>DOCKER_NETWORK</strong> - Network management</li>
+                <li><strong>DOCKER_VOLUME</strong> - Volume management</li>
+                <li><strong>COMPOSE_BUILDER</strong> - docker-compose.yaml generation</li>
+                <li><strong>Unix Socket Support</strong> - Via simple_ipc v2.0 Unix sockets</li>
+            </ul>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 simple_* ecosystem. MIT License.</p>
+        <p>
+            <a href="https://github.com/simple-eiffel/simple_docker">GitHub</a> |
+            <a href="https://simple-eiffel.github.io">Documentation</a>
+        </p>
+    </footer>
+</body>
+</html>
