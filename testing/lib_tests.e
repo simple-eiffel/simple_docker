@@ -1185,6 +1185,7 @@ feature -- Test: SIMPLE_DOCKER_QUICK (Happy Path)
 		local
 			l_quick: SIMPLE_DOCKER_QUICK
 			l_container: detachable DOCKER_CONTAINER
+			l_env: EXECUTION_ENVIRONMENT
 		do
 			create l_quick.make
 			l_container := l_quick.redis
@@ -1193,8 +1194,10 @@ feature -- Test: SIMPLE_DOCKER_QUICK (Happy Path)
 				assert ("redis started", c.id.count > 0)
 				assert ("container tracked", l_quick.container_count = 1)
 
-				-- Cleanup
+				-- Cleanup and wait for Docker state to settle
 				l_quick.cleanup
+				create l_env
+				l_env.sleep (2_000_000_000) -- 2 second delay for Docker cleanup
 				assert ("cleaned up", l_quick.container_count = 0)
 			else
 				-- Redis image might not be available
