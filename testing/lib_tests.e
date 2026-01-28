@@ -1197,7 +1197,7 @@ feature -- Test: SIMPLE_DOCKER_QUICK (Happy Path)
 				-- Cleanup and wait for Docker state to settle
 				l_quick.cleanup
 				create l_env
-				l_env.sleep (2_000_000_000) -- 2 second delay for Docker cleanup
+				l_env.sleep (5_000_000_000) -- 5 second delay for Docker daemon cleanup
 				assert ("cleaned up", l_quick.container_count = 0)
 			else
 				-- Redis image might not be available
