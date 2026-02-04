@@ -25,6 +25,19 @@ inherit
 			on_clean
 		end
 
+feature {NONE} -- Fixtures
+
+	fixtures: CONTAINER_FIXTURES
+		once
+			create Result
+		end
+
+	setup_fixtures
+			-- Initialize fixtures with current client.
+		do
+			fixtures.set_client (client)
+		end
+
 feature -- Setup
 
 	on_prepare
@@ -44,6 +57,7 @@ feature -- Setup
 			else
 				create client.make
 			end
+			setup_fixtures
 			test_counter := test_counter + 1
 		rescue
 			-- Retry on IPC connection failures
@@ -89,8 +103,8 @@ feature -- Test: Connection
 	test_ping
 			-- Test ping Docker daemon.
 		do
-			assert ("ping succeeds", client.ping)
-			assert ("no error after ping", not client.has_error)
+			assert_true ("ping succeeds", client.ping)
+			assert_false ("no error after ping", client.has_error)
 		end
 
 	test_version
@@ -179,8 +193,8 @@ feature -- Test: Containers
 			l_containers: ARRAYED_LIST [DOCKER_CONTAINER]
 		do
 			l_containers := client.list_containers (True)
-			assert ("no error", not client.has_error)
-			assert ("containers list exists", l_containers /= Void)
+			assert_false ("no error", client.has_error)
+			assert_attached ("containers list exists", l_containers)
 		end
 
 	test_create_and_remove_container
