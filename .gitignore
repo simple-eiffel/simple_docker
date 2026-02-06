@@ -11,3 +11,5 @@ EIFGENs/
 .DS_Store
 Thumbs.db
 exception_trace.log
+*.melted
+*.log
