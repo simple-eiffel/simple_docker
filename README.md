@@ -17,7 +17,7 @@ Part of the [Simple Eiffel](https://github.com/simple-eiffel) ecosystem.
 
 ## Status
 
-**Production** - 58 tests passing (v1.4.0)
+**Production** - 58 tests passing (v1.4.1)
 
 ## Overview
 
@@ -251,32 +251,32 @@ end
 
 ## Building & Testing
 
-### Compile Library
+### Check the Library
 
 ```bash
 cd /d/prod/simple_docker
-/d/prod/ec.sh -batch -config simple_docker.ecf -target simple_docker -c_compile
+/d/prod/ec.sh check -config simple_docker.ecf -target simple_docker
 ```
 
-### Compile Tests
+### Compile and Run the Tests
 
 ```bash
-/d/prod/ec.sh -batch -config simple_docker.ecf -target simple_docker_tests -c_compile
-```
-
-### Run Tests
-
-```bash
-# Docker Desktop must be running
-./EIFGENs/simple_docker_tests/W_code/simple_docker.exe
-```
-
-### Finalize with Contracts
-
-```bash
-/d/prod/ec.sh -batch -config simple_docker.ecf -target simple_docker_tests -finalize -keep -c_compile
+/d/prod/ec.sh test -config simple_docker.ecf -target simple_docker_tests
 ./EIFGENs/simple_docker_tests/F_code/simple_docker.exe
 ```
+
+27 of the 58 tests talk to the Docker daemon. When it is not reachable they
+are reported as `SKIPPED (Docker daemon not reachable at ...)`, not failed,
+and the summary line counts them separately:
+
+```
+Results: 58 passed, 0 failed, 0 skipped
+```
+
+The daemon tests give every container, network and volume a name carrying a
+random per-run tag, and remove what they create even when an assertion fails,
+so repeated runs do not collide with each other or with leftovers.
+Set `SIMPLE_DOCKER_TEST_ENDPOINT` to run them against another named pipe.
 
 **Test Results:** 58 tests passing
 

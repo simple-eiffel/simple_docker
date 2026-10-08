@@ -5,6 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1] - 2026-10-08
+
+### Fixed
+- `DOCKER_CLIENT.stream_container_logs` no longer corrupts the client's
+  shared connection. It read one buffer of the chunked log response and
+  left the rest on the keep-alive pipe, so every later request read the
+  previous request's response (stray 404/409 errors, a container "created"
+  from an image-inspect reply, containers left behind in "created" state).
+  The stream now runs on its own connection, closed on return.
+- `stream_container_logs` with `follow` could block forever: the pipe read
+  blocks, so `timeout_ms` never fired. It now polls for data, honors
+  `timeout_ms` as an idle limit (0 = 100 s), ends at the end of the chunked
+  response, decodes chunked encoding, and buffers frames split across reads.
+- `SIMPLE_DOCKER_QUICK.run_script` failed with HTTP 409 (or returned empty
+  output after a 404) because the container ran with AutoRemove and the
+  daemon removed it before its logs were read. The container is now removed
+  explicitly after the logs are read, also when an exception occurs.
+- `SIMPLE_DOCKER_QUICK` container names carry a random per-facade tag, so two
+  facades (or two runs) no longer both ask for `quick_redis_1` (HTTP 409).
+- `SIMPLE_DOCKER_QUICK.cleanup` also removes the containers' anonymous
+  volumes (new `DOCKER_CLIENT.remove_container_and_volumes`); redis and
+  postgres left one volume behind per container.
+- `DOCKER_CLIENT.run_container` removes the container again when it cannot
+  be started, instead of leaving it in "created" state.
+
+### Added
+- `DOCKER_CLIENT.remove_container_and_volumes`, `DOCKER_CLIENT.restore_error`.
+
+### Changed (tests)
+- Container, network and volume names carry a random per-run tag; `on_clean`
+  (also reached from the runner's rescue path) removes whatever a test
+  created, including SIMPLE_DOCKER_QUICK containers.
+- Tests that need the daemon are SKIPPED with the reason when it is not
+  reachable; the summary reports passed, failed and skipped.
+- Tests that passed whatever happened (`assert (..., True)`) now assert the
+  outcome: log lines received in order, callback stop after exactly three
+  lines, exec output text, `[Exit code: 42]`, not-found for a missing
+  container, and that the shared connection still answers in step after a
+  stream.
+
 ## [1.4.0] - 2025-12-16
 
 ### Added
