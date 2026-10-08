@@ -40,10 +40,16 @@ feature {NONE} -- Initialization
 
 	make
 			-- Create quick Docker facade.
+		local
+			l_generator: UUID_GENERATOR
 		do
 			create client.make
 			create managed_containers.make (10)
 			create managed_names.make (10)
+			create l_generator
+			session_tag := l_generator.generate_uuid.out.as_lower
+			session_tag.prune_all ('-')
+			session_tag.keep_head (12)
 		ensure
 			client_exists: client /= Void
 			containers_tracked: managed_containers /= Void
@@ -318,6 +324,7 @@ feature -- Script Execution (one-liners)
 
 	run_script_in_image (a_image: STRING; a_script: STRING): STRING
 			-- Run script in specified image.
+			-- The container is removed after its output has been read.
 		require
 			image_not_empty: not a_image.is_empty
 			script_not_empty: not a_script.is_empty
@@ -325,31 +332,46 @@ feature -- Script Execution (one-liners)
 			l_spec: CONTAINER_SPEC
 			l_container: detachable DOCKER_CONTAINER
 			l_exit_code: INTEGER
+			l_error: detachable DOCKER_ERROR
+			l_created_id: detachable STRING
 		do
 			Result := ""
 			ensure_image (a_image)
 
+			-- No AutoRemove: the daemon would delete the container the moment
+			-- it exits, racing the logs request below (HTTP 409 "marked for
+			-- removal", or 404). The container is removed explicitly instead,
+			-- once the logs have been read.
 			create l_spec.make (a_image)
-			l_spec.set_cmd (<<"sh", "-c", a_script>>)
-				.set_auto_remove (True)
+			l_spec.set_name (unique_name ("script"))
+				.set_cmd (<<"sh", "-c", a_script>>)
 				.do_nothing
 
 			l_container := client.create_container (l_spec)
 
 			if attached l_container as c then
+				l_created_id := c.id
 				if client.start_container (c.id) then
 					l_exit_code := client.wait_container (c.id)
-					if attached client.container_logs (c.id, True, True, 10000) as logs then
-						Result := strip_docker_stream_headers (logs)
-					end
-					if l_exit_code /= 0 then
-						Result := "[Exit code: " + l_exit_code.out + "]%N" + Result
+					if not client.has_error then
+						if attached client.container_logs (c.id, True, True, 10000) as logs then
+							Result := strip_docker_stream_headers (logs)
+						end
+						if l_exit_code /= 0 then
+							Result := "[Exit code: " + l_exit_code.out + "]%N" + Result
+						end
 					end
 				end
-				-- Auto-remove handles cleanup
+				l_error := client.last_error
+				client.remove_container_and_volumes (c.id, True).do_nothing
+				client.restore_error (l_error)
 			end
 		ensure
 			result_exists: Result /= Void
+		rescue
+			if attached l_created_id as al_id then
+				client.remove_container_and_volumes (al_id, True).do_nothing
+			end
 		end
 
 	run_python (a_script: STRING): STRING
@@ -371,10 +393,11 @@ feature -- Container Management
 		end
 
 	cleanup
-			-- Stop and remove all containers started by this facade.
+			-- Stop and remove all containers started by this facade, with their
+			-- anonymous volumes (redis, postgres and the like declare one).
 		do
 			across managed_containers as cid loop
-				client.remove_container (cid, True).do_nothing
+				client.remove_container_and_volumes (cid, True).do_nothing
 			end
 			managed_containers.wipe_out
 			managed_names.wipe_out
@@ -413,13 +436,20 @@ feature {NONE} -- Implementation
 		end
 
 	unique_name (a_prefix: STRING): STRING
-			-- Generate unique container name.
+			-- Generate unique container name: "quick_<prefix>_<session_tag>_<n>".
+			-- The tag keeps names from two facades (or two runs, or a
+			-- container left over from an earlier run) from colliding, which
+			-- the daemon refuses with HTTP 409.
 		do
 			name_counter := name_counter + 1
-			Result := "quick_" + a_prefix + "_" + name_counter.out
+			Result := "quick_" + a_prefix + "_" + session_tag + "_" + name_counter.out
 		ensure
 			not_empty: not Result.is_empty
+			has_session_tag: Result.has_substring (session_tag)
 		end
+
+	session_tag: STRING
+			-- Random tag (12 hex digits) shared by the names this facade makes.
 
 	run_and_track (a_spec: CONTAINER_SPEC; a_name: STRING): detachable DOCKER_CONTAINER
 			-- Run container and add to tracking.
@@ -469,5 +499,6 @@ invariant
 	client_exists: client /= Void
 	containers_tracked: managed_containers /= Void
 	names_tracked: managed_names /= Void
+	session_tag_set: session_tag.count = 12
 
 end

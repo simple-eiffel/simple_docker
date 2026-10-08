@@ -34,7 +34,7 @@ feature {NONE} -- Initialization
 			timestamps := False
 			follow := True
 			tail := 0  -- All logs
-			timeout_ms := 0  -- No timeout (infinite)
+			timeout_ms := 0  -- Client default idle limit
 		ensure
 			stdout_enabled: stdout
 			stderr_enabled: stderr
@@ -70,8 +70,10 @@ feature -- Access
 			-- 0 means all available logs.
 
 	timeout_ms: INTEGER
-			-- Timeout in milliseconds for stream operations.
-			-- 0 means no timeout (wait indefinitely).
+			-- Longest wait, in milliseconds, for more stream data before the
+			-- stream is ended (reset each time data arrives).
+			-- 0 means the client default,
+			-- {DOCKER_CLIENT}.default_stream_idle_limit_ms (100 seconds).
 			-- Useful for preventing hangs on unresponsive containers.
 
 feature -- Configuration (Fluent API)
